@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  ai-virtual-human:
+    build: .
+    container_name: ai-virtual-human
+    ports:
+      - "8888:8888"
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONPATH=/app
+    env_file:
+      - .env
+    restart: always
+    working_dir: /app
+    command: python web_demo/server.py

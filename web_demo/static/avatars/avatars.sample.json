@@ -1,0 +1,29 @@
+{
+  "default": "sample_character",
+  "avatars": [
+    {
+      "id": "sample_character",
+      "name": "範例角色",
+      "description": "這是一個範例虛擬人物配置",
+      "path": "avatars/sample_character",
+      "gender": "female",
+      "tags": ["範例", "示範"]
+    },
+    {
+      "id": "male_character",
+      "name": "男性角色",
+      "description": "男性虛擬人物範例",
+      "path": "avatars/male_character",
+      "gender": "male",
+      "tags": ["男性", "專業"]
+    },
+    {
+      "id": "female_character",
+      "name": "女性角色",
+      "description": "女性虛擬人物範例",
+      "path": "avatars/female_character",
+      "gender": "female",
+      "tags": ["女性", "甜美"]
+    }
+  ]
+}

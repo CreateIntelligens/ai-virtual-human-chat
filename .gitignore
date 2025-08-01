@@ -1,0 +1,48 @@
+# 人物資料夾 (包含大型媒體文件)
+web_demo/static/avatars/*/
+
+# 人物配置文件 (用戶自定義)
+web_demo/static/avatars/avatars.json
+
+# 環境配置
+.env
+
+# Python 相關
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Docker 相關
+.dockerignore
+
+# 日誌文件
+*.log
+
+# 臨時文件
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# IDE 相關
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 測試相關
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 系統文件
+*.bak
+*.orig
+*~
