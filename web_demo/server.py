@@ -5,7 +5,7 @@ import re
 import base64
 import tempfile
 import os
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, Request, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,6 +32,30 @@ app.add_middleware(
 
 # 挂载静态文件
 app.mount("/static", StaticFiles(directory="web_demo/static"), name="static")
+
+# ==================== 路由配置 ====================
+
+@app.get("/")
+async def root():
+    """根路徑，默認跳轉到無浮水印聊天室"""
+    return RedirectResponse(url="/chat1")
+
+@app.get("/chat1")
+async def chat1():
+    """無浮水印聊天室"""
+    return FileResponse("web_demo/static/chat_room_no_watermark.html")
+
+@app.get("/chat2") 
+async def chat2():
+    """標準聊天室"""
+    return FileResponse("web_demo/static/chat_room.html")
+
+@app.get("/chat")
+async def chat_default():
+    """默認聊天室別名，跳轉到無浮水印版本"""
+    return RedirectResponse(url="/chat1")
+
+# ==================== 語音配置 ====================
 
 # 音色映射表
 VOICE_MAPPING = {
