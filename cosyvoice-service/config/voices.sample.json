@@ -1,0 +1,28 @@
+{
+  "voices": [
+    {
+      "id": "gentle_female",
+      "name": "溫柔女聲（艾卡）",
+      "prompt_text": "嗨～我是創造智能的AI代言人艾卡！想知道你的 MBTI 是哪一型嗎？還是對我們的 AI 服務好奇？我都可以告訴你～快來跟我聊聊吧!",
+      "audio_file": "Hayley開心說開場白.mp3",
+      "seed": 112556,
+      "description": "適合客服、朗讀等溫和場景，艾卡專用聲音"
+    },
+    {
+      "id": "professional_male",
+      "name": "沉穩男聲（主播）",
+      "prompt_text": "是砸了八千億，就是希望呢來到這個地方，可以讓民眾飽覽美景，而且呢甚至這八千萬飽覽美景的。",
+      "audio_file": "anchorman1_4_1070748_1426635.wav",
+      "seed": 671112,
+      "description": "商務簡報、新聞播報等正式場合"
+    },
+    {
+      "id": "cheerful_female",
+      "name": "活潑女聲",
+      "prompt_text": "歡迎來到我們的服務！我是您的專屬助手，隨時為您提供幫助。",
+      "audio_file": "cheerful_sample.wav",
+      "seed": 123456,
+      "description": "適合廣告、宣傳等活潑場景"
+    }
+  ]
+}

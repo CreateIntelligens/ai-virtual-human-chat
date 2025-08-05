@@ -233,7 +233,7 @@ function showLoadingMessage() {
 // 載入人物配置
 async function loadAvatarConfig() {
     try {
-        const response = await fetch('avatars/avatars.json');
+        const response = await fetch('/static/avatars/avatars.json');
         avatarConfig = await response.json();
         console.log('人物配置:', avatarConfig);
         

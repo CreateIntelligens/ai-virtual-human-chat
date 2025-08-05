@@ -1,0 +1,88 @@
+{
+  "universal_voices": {
+    "female-sweet": {
+      "display_name": "甜美女聲",
+      "description": "溫柔甜美的女性聲音",
+      "gender": "female",
+      "characteristics": ["sweet", "gentle", "young"],
+      "mappings": {
+        "edge_tts": "female-tianmei",
+        "cosyvoice": "gentle_female"
+      }
+    },
+    "female-mature": {
+      "display_name": "成熟女聲", 
+      "description": "成熟穩重的女性聲音",
+      "gender": "female",
+      "characteristics": ["mature", "elegant", "adult"],
+      "mappings": {
+        "edge_tts": "wumei_yujie",
+        "cosyvoice": "gentle_female"
+      }
+    },
+    "male-young": {
+      "display_name": "青澀男聲",
+      "description": "年輕清澈的男性聲音", 
+      "gender": "male",
+      "characteristics": ["young", "clear", "energetic"],
+      "mappings": {
+        "edge_tts": "male-qn-qingse",
+        "cosyvoice": "professional_male"
+      }
+    },
+    "male-deep": {
+      "display_name": "低沉男聲",
+      "description": "低沉有力的男性聲音",
+      "gender": "male", 
+      "characteristics": ["deep", "powerful", "adult"],
+      "mappings": {
+        "edge_tts": "male-qn-badao",
+        "cosyvoice": "professional_male"
+      }
+    }
+  },
+  "direct_voice_mappings": {
+    "female-tianmei": {
+      "primary_engine": "edge_tts",
+      "display_name": "甜美女聲",
+      "fallback_mappings": {
+        "cosyvoice": "gentle_female"
+      }
+    },
+    "wumei_yujie": {
+      "primary_engine": "edge_tts",
+      "display_name": "嫵媚女聲",
+      "fallback_mappings": {
+        "cosyvoice": "gentle_female"
+      }
+    },
+    "male-qn-qingse": {
+      "primary_engine": "edge_tts",
+      "display_name": "青澀男聲",
+      "fallback_mappings": {
+        "cosyvoice": "professional_male"
+      }
+    },
+    "male-qn-badao": {
+      "primary_engine": "edge_tts",
+      "display_name": "霸氣男聲",
+      "fallback_mappings": {
+        "cosyvoice": "professional_male"
+      }
+    },
+    "gentle_female": {
+      "primary_engine": "cosyvoice",
+      "display_name": "溫柔女聲",
+      "fallback_mappings": {
+        "edge_tts": "female-tianmei"
+      }
+    },
+    "professional_male": {
+      "primary_engine": "cosyvoice",
+      "display_name": "專業男聲",
+      "fallback_mappings": {
+        "edge_tts": "male-qn-qingse"
+      }
+    }
+  }
+}

@@ -1,48 +1,198 @@
-# 人物資料夾 (包含大型媒體文件)
-web_demo/static/avatars/*/
+# ===========================================
+# AI Virtual Human 項目忽略文件
+# ===========================================
+
+# ===========================================
+# 配置文件 (敏感信息)
+# ===========================================
+
+# 環境配置文件
+.env
+.env.local
+.env.production
+
+# CosyVoice 聲音配置 (用戶自定義)
+cosyvoice-service/config/voices.json
 
 # 人物配置文件 (用戶自定義)
 web_demo/static/avatars/avatars.json
 
-# 環境配置
-.env
+# ===========================================
+# 大型文件和模型
+# ===========================================
 
-# Python 相關
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-.venv/
-pip-log.txt
-pip-delete-this-directory.txt
+# 人物資料夾 (包含大型媒體文件)
+web_demo/static/avatars/*/
+!web_demo/static/avatars/avatars.sample.json
 
-# Docker 相關
-.dockerignore
+# CosyVoice 模型文件 (保留目錄結構，忽略模型內容)
+cosyvoice_models/*
+!cosyvoice_models/.gitkeep
+!cosyvoice_models/README.md
 
-# 日誌文件
-*.log
+# 音頻樣本文件
+cosyvoice-service/config/audio_samples/*.mp3
+cosyvoice-service/config/audio_samples/*.wav
+!cosyvoice-service/config/audio_samples/README.md
+
+# ===========================================
+# 測試和臨時文件
+# ===========================================
+
+# 測試文件
+test_*.py
+*_test.py
+test_*.wav
+test_*.mp3
+
+# 備份文件
+*.backup
+*.bak
+*.orig
+*~
 
 # 臨時文件
 *.tmp
 *.temp
-.DS_Store
-Thumbs.db
 
-# IDE 相關
+# ===========================================
+# Python 相關
+# ===========================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.pytest_cache/
+
+# ===========================================
+# Docker 相關
+# ===========================================
+
+# Docker 忽略文件
+.dockerignore
+
+# Docker 卷數據
+docker-data/
+
+# ===========================================
+# 日誌和調試
+# ===========================================
+
+# 日誌文件
+*.log
+logs/
+
+# 調試文件
+debug/
+*.debug
+
+# ===========================================
+# IDE 和編輯器
+# ===========================================
+
+# Visual Studio Code
 .vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# PyCharm
 .idea/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
 *.swp
 *.swo
 
-# 測試相關
-.pytest_cache/
-.coverage
-htmlcov/
-
-# 系統文件
-*.bak
-*.orig
+# Emacs
 *~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# ===========================================
+# 系統文件
+# ===========================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# ===========================================
+# 其他
+# ===========================================
+
+# 壓縮文件
+*.zip
+*.tar.gz
+*.rar
+
+# 媒體文件 (除了必要的樣本)
+*.mp4
+*.avi
+*.mov
+!web_demo/static/common/*.png
+!web_demo/static/common/*.jpg
+
+# 文檔草稿
+*.draft
+*.wip

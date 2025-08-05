@@ -12,6 +12,31 @@ services:
       - PYTHONPATH=/app
     env_file:
       - .env
+    depends_on:
+      cosyvoice-service:
+        condition: service_healthy
     restart: always
     working_dir: /app
     command: python web_demo/server.py
+
+  cosyvoice-service:
+    build: ./cosyvoice-service
+    container_name: cosyvoice-service
+    ports:
+      - "50001:50001"
+    volumes:
+      - ./cosyvoice_models:/app/models
+      - ./cosyvoice-service/config:/app/config
+    environment:
+      - MODEL_DIR=./models/trained_models20250801/cosyvoice2/
+      - PORT=50001
+      - PYTHONPATH=/app:/app/third_party/Matcha-TTS
+    restart: always
+    working_dir: /app
+    command: python3 runtime/python/fastapi/server.py --port 50001 --model_dir ./models/trained_models20250801/cosyvoice2/
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:50001/voices"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s

@@ -14,3 +14,6 @@ uvicorn
 openai
 python-dotenv
 google-generativeai
+aiohttp
+python-multipart
+groq

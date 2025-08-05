@@ -1,0 +1,64 @@
+{
+  "provider": "edge_tts",
+  "display_name": "Microsoft EdgeTTS",
+  "description": "微軟高品質神經網路語音合成",
+  "requires_internet": true,
+  "supported_languages": ["zh-CN", "zh-TW", "en-US"],
+  
+  "voices": {
+    "female-tianmei": {
+      "engine_voice_id": "zh-CN-XiaoyiNeural",
+      "display_name": "甜美女聲",
+      "description": "溫柔甜美的女性聲音",
+      "gender": "female",
+      "age_group": "young",
+      "language": "zh-CN",
+      "quality": "high",
+      "recommended": true,
+      "tags": ["sweet", "gentle", "natural"]
+    },
+    "wumei_yujie": {
+      "engine_voice_id": "zh-CN-XiaoxiaoNeural",
+      "display_name": "嫵媚女聲",
+      "description": "成熟嫵媚的女性聲音",
+      "gender": "female", 
+      "age_group": "adult",
+      "language": "zh-CN",
+      "quality": "high",
+      "recommended": false,
+      "tags": ["mature", "elegant", "charming"]
+    },
+    "male-qn-qingse": {
+      "engine_voice_id": "zh-CN-YunxiNeural",
+      "display_name": "青澀男聲",
+      "description": "年輕清澈的男性聲音",
+      "gender": "male",
+      "age_group": "young", 
+      "language": "zh-CN",
+      "quality": "high",
+      "recommended": true,
+      "tags": ["young", "clear", "energetic"]
+    },
+    "male-qn-badao": {
+      "engine_voice_id": "zh-CN-YunyangNeural",
+      "display_name": "霸氣男聲",
+      "description": "低沉有力的男性聲音",
+      "gender": "male",
+      "age_group": "adult",
+      "language": "zh-CN", 
+      "quality": "high",
+      "recommended": false,
+      "tags": ["deep", "powerful", "authoritative"]
+    }
+  },
+  
+  "default_voice": "female-tianmei",
+  "fallback_voice": "female-tianmei",
+  
+  "audio_settings": {
+    "sample_rate": 16000,
+    "channels": 1,
+    "format": "wav",
+    "bit_depth": 16
+  }
+}

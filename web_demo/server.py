@@ -10,14 +10,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, Request, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-# 嘗試導入edge-tts，如果失敗則使用測試音檔
-try:
-    import edge_tts
-    EDGE_TTS_AVAILABLE = True
-    print("✅ Edge-TTS 可用")
-except ImportError:
-    EDGE_TTS_AVAILABLE = False
-    print("❌ Edge-TTS 不可用，將使用測試音檔")
+# 導入雙引擎 TTS 管理器
+from voiceapi.dual_tts_manager import dual_tts_manager
 
 app = FastAPI()
 
@@ -33,67 +27,90 @@ app.add_middleware(
 # 挂载静态文件
 app.mount("/static", StaticFiles(directory="web_demo/static"), name="static")
 
-# ==================== 語音配置 ====================
+# ==================== 雙引擎 TTS 系統 ====================
 
-# 音色映射表
-VOICE_MAPPING = {
-    "male-qn-qingse": "zh-CN-YunxiNeural",        # 青澀男
-    "male-qn-badao": "zh-CN-YunyangNeural",       # 霸氣男
-    "wumei_yujie": "zh-CN-XiaoxiaoNeural",        # 嫵媚女
-    "female-tianmei": "zh-CN-XiaoyiNeural"        # 甜美女
-}
+@app.on_event("startup")
+async def startup_event():
+    """應用啟動時初始化 TTS 引擎"""
+    print("🚀 正在初始化雙引擎 TTS 系統...")
+    await dual_tts_manager.initialize()
+    print("✅ 雙引擎 TTS 系統初始化完成")
 
-async def generate_tts_with_edge_tts(text, voice_id):
-    """使用edge-tts生成語音（如果可用）"""
-    if not EDGE_TTS_AVAILABLE:
-        return get_fallback_audio()
-    
+@app.on_event("shutdown")
+async def shutdown_event():
+    """應用關閉時清理資源"""
+    print("🔄 正在關閉 TTS 引擎...")
+    await dual_tts_manager.close()
+    print("✅ TTS 引擎已關閉")
+
+# ==================== TTS API 端點 ====================
+
+@app.get("/tts/providers")
+async def get_tts_providers():
+    """獲取可用的 TTS 引擎列表"""
+    return {
+        "providers": dual_tts_manager.get_available_providers(),
+        "default_provider": dual_tts_manager.default_provider
+    }
+
+@app.get("/tts/voices")
+async def get_all_voices():
+    """獲取所有引擎的聲音列表"""
+    return dual_tts_manager.get_all_voices()
+
+@app.get("/tts/voices/{provider}")
+async def get_provider_voices(provider: str):
+    """獲取指定引擎的聲音列表"""
+    voices = dual_tts_manager.get_provider_voices(provider)
+    if not voices:
+        raise HTTPException(status_code=404, detail=f"Provider {provider} not found or unavailable")
+    return voices
+
+@app.post("/tts/generate")
+async def generate_tts_audio(request: Request):
+    """生成 TTS 音頻"""
     try:
-        voice_name = VOICE_MAPPING.get(voice_id, "zh-CN-XiaoxiaoNeural")
-        print(f"🎵 使用Edge-TTS: '{text}' (長度: {len(text)}) -> {voice_name}")
+        body = await request.json()
+        text = body.get("text", "")
+        provider = body.get("provider")  # 可選，不指定則使用默認引擎
+        voice_id = body.get("voice_id", "female-tianmei")
         
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
-            tmp_filename = tmp_file.name
+        if not text:
+            raise HTTPException(status_code=400, detail="Text is required")
         
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as converted_file:
-            converted_filename = converted_file.name
+        # 使用雙引擎管理器生成音頻
+        audio_base64 = await dual_tts_manager.generate_audio(
+            text=text,
+            provider=provider,
+            voice_id=voice_id
+        )
         
-        # 生成Edge-TTS音頻
-        communicate = edge_tts.Communicate(text, voice_name)
-        await communicate.save(tmp_filename)
-        
-        # 轉換為16kHz單聲道以匹配原始格式
-        import subprocess
-        conversion_result = subprocess.run([
-            'ffmpeg', '-y', '-i', tmp_filename, 
-            '-ar', '16000',  # 採樣率 16kHz
-            '-ac', '1',      # 單聲道
-            '-sample_fmt', 's16',  # 16位PCM
-            converted_filename
-        ], capture_output=True, text=True)
-        
-        if conversion_result.returncode != 0:
-            print(f"⚠️ 音頻轉換失敗，使用原始格式: {conversion_result.stderr}")
-            audio_filename = tmp_filename
+        if audio_base64:
+            return {
+                "success": True,
+                "audio": audio_base64,
+                "provider_used": provider or dual_tts_manager.default_provider,
+                "voice_id": voice_id
+            }
         else:
-            print("✅ 音頻已轉換為16kHz單聲道")
-            audio_filename = converted_filename
-        
-        with open(audio_filename, "rb") as audio_file:
-            audio_data = audio_file.read()
-        
-        # 清理臨時文件
-        os.unlink(tmp_filename)
-        if os.path.exists(converted_filename):
-            os.unlink(converted_filename)
-        
-        base64_string = base64.b64encode(audio_data).decode('utf-8')
-        print(f"🔊 TTS生成成功: {len(audio_data)} bytes")
-        return base64_string
-        
+            raise HTTPException(status_code=500, detail="Failed to generate audio")
+            
     except Exception as e:
-        print(f"❌ Edge-TTS失敗: {e}")
-        return get_fallback_audio()
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==================== 向後兼容的 TTS 函數 ====================
+
+async def get_audio_async(text_cache, voice_speed, voice_id):
+    """異步版本的音頻生成函數（向後兼容）"""
+    try:
+        # 使用雙引擎管理器生成音頻
+        return await dual_tts_manager.generate_audio(
+            text=text_cache,
+            voice_id=voice_id
+        )
+    except Exception as e:
+        print(f"❌ TTS 生成失敗: {e}")
+        return None
 
 def get_fallback_audio():
     """降級處理 - 跳過音頻生成"""
@@ -104,12 +121,7 @@ def get_audio(text_cache, voice_speed, voice_id):
     """向後兼容的音頻生成函數（同步版本，用於向後兼容）"""
     return get_fallback_audio()
 
-async def get_audio_async(text_cache, voice_speed, voice_id):
-    """異步版本的音頻生成函數"""
-    if EDGE_TTS_AVAILABLE:
-        return await generate_tts_with_edge_tts(text_cache, voice_id)
-    else:
-        return get_fallback_audio()
+# ==================== LLM 和對話處理 ====================
 
 # 導入LLM模組
 from voiceapi.llm import llm_answer, llm_stream
@@ -152,29 +164,62 @@ def split_sentence(sentence, min_length=10):
     print(f"📝 最終分割結果: {sentences}")
     return sentences
 
+async def gen_stream(prompt, asr=False, voice_speed=None, voice_id=None, provider=None):
+    """生成流式響應"""
+    print(f"🎯 流式生成參數: voice_speed={voice_speed}, voice_id={voice_id}, provider={provider}")
+    
+    try:
+        if asr:
+            chunk = {
+                "prompt": prompt
+            }
+            yield f"{json.dumps(chunk)}\n"  # 使用换行符分隔 JSON 块
 
-import asyncio
-async def gen_stream(prompt, asr = False, voice_speed=None, voice_id=None):
-    print("XXXXXXXXX", voice_speed, voice_id)
-    if asr:
-        chunk = {
-            "prompt": prompt
+        text_cache = llm_answer(prompt)
+        sentences = split_sentence(text_cache)
+
+        for index_, sub_text in enumerate(sentences):
+            try:
+                # 使用雙引擎管理器生成音頻
+                base64_string = await dual_tts_manager.generate_audio(
+                    text=sub_text,
+                    provider=provider,
+                    voice_id=voice_id or "female-tianmei"
+                )
+                
+                # 生成 JSON 格式的数据块
+                chunk = {
+                    "text": sub_text,
+                    "audio": base64_string,
+                    "endpoint": index_ == len(sentences)-1
+                }
+                yield f"{json.dumps(chunk)}\n"  # 使用换行符分隔 JSON 块
+                await asyncio.sleep(0.2)  # 模拟异步延迟
+                
+            except Exception as e:
+                print(f"❌ 生成音頻失敗 (片段 {index_}): {e}")
+                # 即使音頻生成失敗，也要發送文本響應
+                chunk = {
+                    "text": sub_text,
+                    "audio": None,  # 音頻失敗時設為 None
+                    "endpoint": index_ == len(sentences)-1,
+                    "error": f"TTS 生成失敗: {str(e)}"
+                }
+                yield f"{json.dumps(chunk)}\n"
+                await asyncio.sleep(0.2)
+                
+    except Exception as e:
+        print(f"❌ 流式響應生成失敗: {e}")
+        # 發送錯誤響應並正確結束流
+        error_chunk = {
+            "text": "",
+            "audio": None,
+            "endpoint": True,
+            "error": f"流式響應失敗: {str(e)}"
         }
-        yield f"{json.dumps(chunk)}\n"  # 使用换行符分隔 JSON 块
+        yield f"{json.dumps(error_chunk)}\n"
 
-    text_cache = llm_answer(prompt)
-    sentences = split_sentence(text_cache)
-
-    for index_, sub_text in enumerate(sentences):
-        base64_string = await get_audio_async(sub_text, voice_speed, voice_id)
-        # 生成 JSON 格式的数据块
-        chunk = {
-            "text": sub_text,
-            "audio": base64_string,
-            "endpoint": index_ == len(sentences)-1
-        }
-        yield f"{json.dumps(chunk)}\n"  # 使用换行符分隔 JSON 块
-        await asyncio.sleep(0.2)  # 模拟异步延迟
+# ==================== 對話 API 端點 ====================
 
 # 处理 ASR 和 TTS 的端点
 @app.post("/process_audio")
@@ -184,12 +229,10 @@ async def process_audio(file: UploadFile = File(...)):
     # 调用 TTS 生成流式响应
     return StreamingResponse(gen_stream(text, asr=True), media_type="application/json")
 
-
 async def call_asr_api(audio_data):
     # 调用ASR完成语音识别
     answer = "语音已收到，这里只是模仿，真正对话需要您自己设置ASR服务。"
     return answer
-
 
 @app.post("/eb_stream")    # 前端调用的path
 async def eb_stream(request: Request):
@@ -198,6 +241,7 @@ async def eb_stream(request: Request):
         input_mode = body.get("input_mode")
         voice_speed = body.get("voice_speed")
         voice_id = body.get("voice_id")
+        provider = body.get("provider")  # 新增：支援指定 TTS 引擎
 
         if input_mode == "audio":
             base64_audio = body.get("audio")
@@ -205,14 +249,38 @@ async def eb_stream(request: Request):
             audio_data = base64.b64decode(base64_audio)
             # 这里可以添加对音频数据的处理逻辑
             prompt = await call_asr_api(audio_data)  # 假设 call_asr_api 可以处理音频数据
-            return StreamingResponse(gen_stream(prompt, asr=True, voice_speed=voice_speed, voice_id=voice_id), media_type="application/json")
+            return StreamingResponse(
+                gen_stream(prompt, asr=True, voice_speed=voice_speed, voice_id=voice_id, provider=provider), 
+                media_type="application/json"
+            )
         elif input_mode == "text":
             prompt = body.get("prompt")
-            return StreamingResponse(gen_stream(prompt, asr=False, voice_speed=voice_speed, voice_id=voice_id), media_type="application/json")
+            return StreamingResponse(
+                gen_stream(prompt, asr=False, voice_speed=voice_speed, voice_id=voice_id, provider=provider), 
+                media_type="application/json"
+            )
         else:
             raise HTTPException(status_code=400, detail="Invalid input mode")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ==================== 健康檢查和狀態 ====================
+
+@app.get("/health")
+async def health_check():
+    """健康檢查端點"""
+    providers = dual_tts_manager.get_available_providers()
+    return {
+        "status": "healthy",
+        "tts_engines": providers,
+        "total_engines": len(providers),
+        "available_engines": len([p for p in providers if p["status"] == "available"])
+    }
+
+@app.get("/")
+async def root():
+    """根路徑重定向到測試頁面"""
+    return RedirectResponse(url="/static/test_dialog_api.html")
 
 # 启动Uvicorn服务器
 if __name__ == "__main__":

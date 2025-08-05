@@ -1,0 +1,49 @@
+{
+  "provider": "cosyvoice",
+  "display_name": "CosyVoice",
+  "description": "阿里巴巴高品質語音合成引擎 (基於 ai-voice-studio)",
+  "requires_internet": true,
+  "supported_languages": ["zh-CN", "zh-TW", "en-US"],
+  
+  "voices": {
+    "gentle_female": {
+      "engine_voice_id": "gentle_female",
+      "display_name": "溫柔女聲（艾卡）",
+      "description": "適合客服、朗讀等溫和場景，艾卡專用聲音",
+      "gender": "female",
+      "age_group": "adult",
+      "language": "zh-CN",
+      "quality": "high",
+      "recommended": true,
+      "tags": ["gentle", "professional", "clear", "aikka"]
+    },
+    "professional_male": {
+      "engine_voice_id": "professional_male",
+      "display_name": "沉穩男聲（主播）",
+      "description": "適合商務簡報、新聞播報等正式場合",
+      "gender": "male",
+      "age_group": "adult",
+      "language": "zh-CN",
+      "quality": "high",
+      "recommended": true,
+      "tags": ["professional", "authoritative", "formal", "anchor"]
+    }
+  },
+  
+  "default_voice": "gentle_female",
+  "fallback_voice": "gentle_female",
+  
+  "api_config": {
+    "base_url": "http://cosyvoice-service:50001",
+    "timeout": null,
+    "retry_attempts": 3,
+    "health_check_interval": 60
+  },
+  
+  "audio_settings": {
+    "sample_rate": 22050,
+    "channels": 1,
+    "format": "wav",
+    "bit_depth": 16
+  }
+}

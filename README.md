@@ -1,134 +1,311 @@
-# 創造智能 AI 客服聊天室系統
+# AI Virtual Human - 智能虛擬人系統
 
-基於 DH_Live 項目的專業 AI 客服聊天室系統，整合了 Groq LLaMA 3.3 70B 模型、虛擬人物渲染、語音合成和智能對話功能。
+> 基於 DH_Live 的高品質虛擬人對話系統，支援雙引擎 TTS 和 Docker 部署
 
-## 🎯 系統概述
+## 🎯 項目概述
 
-這是一個完整的 AI 客服解決方案，具備：
+AI Virtual Human 是一個完整的智能虛擬人解決方案，整合了先進的語音合成技術和實時人物渲染，為用戶提供自然流暢的對話體驗。
 
-- **智能對話**: Groq LLaMA 3.3 70B 驅動的高質量對話
-- **虛擬人物**: WebGL 驅動的 3D 人物動畫渲染
-- **語音合成**: Edge-TTS 整合，支援多種中文語音
-- **嘴部同步**: WebAssembly 驅動的精確嘴部動畫
-- **響應式設計**: 支援桌面、平板和手機設備
-- **專業客服**: 制式回答和身份保護機制
+### ✨ 主要特色
 
-## ⚠️ 重要配置說明
-
-### 🔧 人物配置設置
-
-**首次使用前，請務必完成以下配置：**
-
-1. **複製範例配置**：
-   ```bash
-   cp web_demo/static/avatars/avatars.sample.json web_demo/static/avatars/avatars.json
-   ```
-
-2. **添加您的人物資料**：
-   - 將人物資料夾放入 `web_demo/static/avatars/`
-   - 更新 `avatars.json` 配置
-
-3. **文件結構**：
-   ```
-   web_demo/static/avatars/
-   ├── avatars.json          # 您的配置文件 (需要創建)
-   ├── avatars.sample.json   # 範例配置文件
-   ├── your_character1/      # 您的人物資料夾
-   │   ├── 01.mp4
-   │   └── combined_data.json.gz
-   └── your_character2/
-       ├── 01.mp4
-       └── combined_data.json.gz
-   ```
-
-**⚠️ 注意**: 如果沒有正確配置 `avatars.json`，系統會顯示錯誤警示而不是使用預設人物。
+- **🎭 高品質虛擬人渲染**：基於 WebGL 的實時人物動畫
+- **🎵 雙引擎 TTS 系統**：EdgeTTS + CosyVoice 智能切換
+- **🤖 智能對話系統**：支援多種 LLM 服務
+- **🐳 Docker 容器化部署**：一鍵啟動完整服務
+- **📱 響應式設計**：支援桌面、平板、手機多端適配
+- **🔄 自動降級機制**：確保服務穩定性
 
 ## 🚀 快速開始
 
-### 環境要求
+### 前置需求
 
-- Docker
-- Docker Compose
-- 8888 端口可用
+- Docker 和 Docker Compose
+- 至少 4GB 可用記憶體
+- 支援 WebGL 的現代瀏覽器
 
-### 配置 LLM API
-
-編輯 `.env` 文件，選擇並配置您的 LLM 提供商：
-
-**使用 Groq (推薦)：**
-```env
-# LLM 提供商選擇
-LLM_PROVIDER=groq
-
-# Groq API 配置
-GROQ_API_KEY=your_actual_groq_api_key_here
-GROQ_MODEL=llama-3.3-70b-versatile
-```
-
-**使用 Gemini：**
-```env
-# LLM 提供商選擇
-LLM_PROVIDER=gemini
-
-# Gemini API 配置
-GEMINI_API_KEY=your_actual_gemini_api_key_here
-GEMINI_MODEL=gemini-2.0-flash
-```
-
-### 一鍵啟動
+### 一鍵部署
 
 ```bash
-# 克隆項目
-git clone <your-repo-url>
-cd ai-virtual-human
+# 1. 克隆項目
+git clone https://github.com/CreateIntelligens/ai-virtual-human-chat
 
-# 配置人物 (重要!)
+# 2. 配置環境變數
+cp .env.sample .env
+# 編輯 .env 文件，設置您的 API 密鑰
+
+# 3. 配置 CosyVoice 聲音
+cp cosyvoice-service/config/voices.sample.json cosyvoice-service/config/voices.json
+# 根據需要修改聲音配置
+
+# 4. 配置虛擬人物
 cp web_demo/static/avatars/avatars.sample.json web_demo/static/avatars/avatars.json
+# 添加您的虛擬人物資源
 
-# 啟動服務
-docker-compose up -d
-
-# 查看日誌
-docker-compose logs -f
+# 5. 啟動服務
+docker-compose up --build
 ```
 
-### 訪問聊天室
+### 訪問服務
 
-- **標準聊天室**：http://localhost:8888/static/chat_room.html
-- **去水印版**：http://localhost:8888/static/chat_room_no_watermark.html
+- **主應用**: http://localhost:8888
+- **智能客服聊天室**: http://localhost:8888/static/chat_room_no_watermark.html
+- **雙引擎 TTS 測試**: http://localhost:8888/static/dual_tts_chat_room.html
+- **API 測試頁面**: http://localhost:8888/static/test_dialog_api.html
+- **健康檢查**: http://localhost:8888/health
 
 ## 📁 項目結構
 
 ```
 ai-virtual-human/
-├── .gitignore                    # Git 忽略文件
-├── .env                          # 環境配置文件
-├── README.md                     # 本文檔
-├── docker-compose.yaml           # Docker 配置
-├── Dockerfile                    # Docker 鏡像
-├── requirements.txt              # Python 依賴
-└── web_demo/
-    ├── server.py                 # FastAPI 後端服務器
-    ├── voiceapi/
-    │   └── llm.py               # Groq LLM 整合模組
-    └── static/
-        ├── chat_room.html        # 標準聊天室頁面
-        ├── chat_room_no_watermark.html  # 去水印版聊天室
-        ├── js/
-        │   ├── MiniLive2.js      # 標準版 JavaScript
-        │   └── MiniLive2_v2.js   # 去水印版 JavaScript
-        ├── common/               # 共用資源
-        └── avatars/
-            ├── avatars.json      # 人物配置文件 (需要創建)
-            ├── avatars.sample.json  # 範例配置文件
-            └── your_characters/  # 您的人物資料夾
+├── 📄 README.md                    # 項目說明文檔
+├── 🐳 docker-compose.yaml          # Docker Compose 配置
+├── 🐳 Dockerfile                   # 主應用容器配置
+├── ⚙️ .env.sample                  # 環境配置範例
+├── 📋 requirements.txt             # Python 依賴
+├── 🚫 .gitignore                   # Git 忽略文件
+│
+├── 🎵 cosyvoice-service/           # CosyVoice 語音合成服務
+│   ├── 🐳 Dockerfile               # CosyVoice 容器配置
+│   ├── 📋 requirements.txt         # CosyVoice 依賴
+│   ├── 🎛️ config/                  # 聲音配置目錄
+│   │   ├── 📄 voices.sample.json   # 聲音配置範例
+│   │   └── 🎵 audio_samples/       # 音頻樣本目錄
+│   ├── 🧠 cosyvoice/               # CosyVoice 核心程式碼
+│   ├── 📦 third_party/             # 第三方依賴
+│   └── 🚀 runtime/                 # FastAPI 服務器
+│
+├── 🎭 web_demo/                    # Web 應用主目錄
+│   ├── 🚀 server.py                # FastAPI 主服務器
+│   ├── 📄 README.md                # Web 應用說明
+│   │
+│   ├── 🎵 voiceapi/                # TTS 語音 API 系統
+│   │   ├── 🎛️ tts_config_manager.py      # TTS 配置管理器
+│   │   ├── 🔄 dual_tts_manager.py         # 雙引擎 TTS 管理器
+│   │   ├── 🤖 llm.py                      # LLM 對話接口
+│   │   │
+│   │   ├── 🎵 tts_engines/               # TTS 引擎實現
+│   │   │   ├── 📄 base_tts.py            # 基礎抽象類
+│   │   │   ├── 🚀 edge_tts_engine.py     # EdgeTTS 引擎
+│   │   │   └── 🎭 cosyvoice_engine.py    # CosyVoice 引擎
+│   │   │
+│   │   └── ⚙️ tts_configs/               # TTS 配置文件
+│   │       ├── 🚀 edge_tts.json          # EdgeTTS 配置
+│   │       ├── 🎭 cosyvoice.json         # CosyVoice 配置
+│   │       └── 🔗 voice_mapping.json     # 聲音映射配置
+│   │
+│   └── 🌐 static/                  # 靜態資源目錄
+│       ├── 🎭 avatars/             # 虛擬人物資源
+│       │   └── 📄 avatars.sample.json    # 人物配置範例
+│       ├── 🎨 css/                 # 樣式文件
+│       ├── 📜 js/                  # JavaScript 腳本
+│       ├── 🖼️ common/              # 公共資源
+│       └── 🎪 chat_room_no_watermark.html     # 智能客服聊天室
+│
+├── 🧠 cosyvoice_models/            # CosyVoice 模型存放目錄
+│   └── 📁 trained_models20250801/  # 您的微調模型
+│
+├── 🎭 data/                        # 人物數據文件
+├── 🎬 mini_live/                   # 人物渲染核心
+└── 🧠 talkingface/                 # 人臉動畫系統
 ```
 
-## 🎭 人物管理
+## 🎵 TTS 引擎系統
 
-### 人物配置文件
+### 支援的引擎
 
-`web_demo/static/avatars/avatars.json` 控制所有可用人物：
+#### 🚀 EdgeTTS (微軟)
+- **優勢**: 快速、穩定、免費
+- **聲音**: 甜美女聲、嫵媚女聲、青澀男聲、霸氣男聲
+- **適用**: 快速響應場景
+
+#### 🎭 CosyVoice (阿里巴巴)
+- **優勢**: 高品質、可定制、支援微調
+- **聲音**: 溫柔女聲（艾卡）、沉穩男聲（主播）
+- **適用**: 高品質音頻需求
+
+### 智能引擎選擇
+
+系統會根據以下策略自動選擇最佳引擎：
+
+1. **用戶指定引擎**: 優先使用用戶選擇的引擎
+2. **聲音映射**: 根據聲音 ID 自動選擇對應引擎
+3. **自動降級**: 主引擎失敗時切換到備用引擎
+4. **負載均衡**: 根據引擎負載智能分配
+
+### 聲音選擇界面
+
+聲音選擇下拉選單按引擎分組顯示：
+
+```
+🚀 EdgeTTS (快速)
+├── 甜美女聲
+├── 嫵媚女聲
+├── 青澀男聲
+└── 霸氣男聲
+
+🎭 CosyVoice (高品質)
+├── 溫柔女聲
+└── 沉穩男聲
+```
+
+## 🎭 虛擬人物系統
+
+### 人物配置
+
+編輯 `web_demo/static/avatars/avatars.json` 配置虛擬人物：
+
+```json
+{
+  "default": "male1",
+  "avatars": [
+    {
+      "id": "male1",
+      "name": "man",
+      "description": "男性角色",
+      "path": "/static/avatars/aikka"
+    }
+  ]
+}
+```
+
+### 人物資源結構
+
+每個人物需要以下資源：
+
+```
+avatars/your_character/
+├── 01.mp4                    # 人物視頻
+├── combined_data.json.gz     # 人物數據
+└── preview.jpg              # 預覽圖片（可選）
+```
+
+## 🤖 LLM 對話配置
+
+### 支援的 LLM 服務
+
+系統支援兩種 LLM 服務提供商，在 `.env` 文件中配置：
+
+#### Groq
+```bash
+LLM_PROVIDER=groq
+GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL=llama-3.1-70b-versatile
+```
+
+#### Google Gemini
+```bash
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=gemini-pro
+```
+
+### 獲取 API 密鑰
+
+#### Groq API
+1. 訪問 [Groq Console](https://console.groq.com/)
+2. 註冊並登入帳戶
+3. 在 API Keys 頁面創建新的 API 密鑰
+4. 複製密鑰到 `.env` 文件中
+
+#### Google Gemini API
+1. 訪問 [Google AI Studio](https://makersuite.google.com/)
+2. 登入 Google 帳戶
+3. 創建新的 API 密鑰
+4. 複製密鑰到 `.env` 文件中
+
+## 🔧 API 文檔
+
+### TTS API
+
+#### 獲取可用引擎
+```http
+GET /tts/providers
+```
+
+#### 獲取聲音列表
+```http
+GET /tts/voices
+```
+
+#### 生成語音
+```http
+POST /tts/generate
+Content-Type: application/json
+
+{
+  "text": "你好，這是測試文本",
+  "provider": "cosyvoice",
+  "voice_id": "gentle_female"
+}
+```
+
+#### 流式對話
+```http
+POST /eb_stream
+Content-Type: application/json
+
+{
+  "input_mode": "text",
+  "prompt": "你好",
+  "voice_id": "gentle_female",
+  "provider": "cosyvoice"
+}
+```
+
+### 健康檢查
+```http
+GET /health
+```
+
+## 🛠️ 配置指南
+
+### 環境變數配置
+
+複製 `.env.sample` 為 `.env` 並修改以下配置：
+
+```bash
+# TTS 引擎配置
+TTS_DEFAULT_PROVIDER=edge_tts
+TTS_ENABLED_PROVIDERS=edge_tts,cosyvoice
+
+# CosyVoice 配置
+COSYVOICE_ENABLED=true
+COSYVOICE_API_URL=http://cosyvoice-service:50001
+COSYVOICE_API_TIMEOUT=180
+
+# LLM 配置
+LLM_PROVIDER=groq
+GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL=llama-3.1-70b-versatile
+
+# 或使用 Gemini
+# LLM_PROVIDER=gemini
+# GEMINI_API_KEY=your_gemini_api_key_here
+# GEMINI_MODEL=gemini-pro
+```
+
+### CosyVoice 聲音配置
+
+複製 `cosyvoice-service/config/voices.sample.json` 為 `voices.json` 並配置：
+
+```json
+{
+  "voices": [
+    {
+      "id": "gentle_female",
+      "name": "溫柔女聲",
+      "prompt_text": "您的提示文本",
+      "audio_file": "your_audio_sample.mp3",
+      "seed": 112556,
+      "description": "聲音描述"
+    }
+  ]
+}
+```
+
+### 虛擬人物配置
+
+複製 `web_demo/static/avatars/avatars.sample.json` 為 `avatars.json` 並添加您的人物：
 
 ```json
 {
@@ -138,318 +315,226 @@ ai-virtual-human/
       "id": "your_character",
       "name": "您的角色名稱",
       "description": "角色描述",
-      "path": "avatars/your_character",
-      "gender": "male/female",
-      "tags": ["標籤1", "標籤2"]
+      "path": "/static/avatars/your_character"
     }
   ]
 }
 ```
 
-### 添加新人物
+## 🎪 使用場景
 
-1. **創建人物資料夾**:
-   ```bash
-   mkdir web_demo/static/avatars/new_character
-   ```
+### 智能客服聊天室
 
-2. **添加必要文件**:
-   ```
-   web_demo/static/avatars/new_character/
-   ├── 01.mp4                    # 人物視頻文件
-   └── combined_data.json.gz     # 模型數據文件
-   ```
+訪問 `http://localhost:8888/static/chat_room_no_watermark.html`
 
-3. **更新配置文件**:
-   在 `avatars.json` 中添加新人物配置
+**特色功能**：
+- 🎭 實時虛擬人物動畫
+- 🎵 智能語音合成
+- 📱 響應式設計
+- 🔄 自動引擎切換
 
-4. **重啟服務**:
-   ```bash
-   docker-compose restart
-   ```
+**使用方法**：
+1. 選擇虛擬人物
+2. 選擇語音引擎和聲音
+3. 輸入問題開始對話
 
-### 文件格式要求
 
-- **01.mp4**: H.264 編碼的 MP4 視頻文件
-- **combined_data.json.gz**: Gzip 壓縮的 JSON 模型數據
-- 建議視頻解析度: 512x512 或更高
-- 建議幀率: 25-30 FPS
 
-## 🎨 聊天室功能
 
-### 🤖 智能對話系統
-
-#### LLM 驅動
-- **Groq LLaMA 3.3 70B** 提供高質量對話
-- **專業客服提示詞** 確保專業服務體驗
-- **制式回答** 針對常見問題提供標準回應
-
-#### 身份保護
-系統嚴格維護客服專員身份：
-- 被問及身份時回應："我是創造智能的客服專員"
-- 專業的客服語氣和用詞
-- 絕不透露 AI 本質
-
-### 📚 制式回答系統
-
-針對常見問題提供標準回應：
-
-| 問題類型 | 觸發關鍵字 | 標準回應 |
-|---------|-----------|---------|
-| 產品介紹 | "產品介紹", "服務" | 介紹五大服務類型 |
-| 公司介紹 | "公司介紹", "你們是誰" | 創造智能公司簡介 |
-| AIGC影片 | "aigc", "影片" | AIGC影片服務詳情 |
-| 智能客服 | "智能客服", "客服" | 智能客服解決方案 |
-| MCN聯盟 | "mcn", "聯盟" | MCN聯盟服務介紹 |
-| LINE CRM | "line", "crm" | LINE CRM功能說明 |
-| AI虛擬人 | "虛擬人", "數位人" | AI虛擬人技術介紹 |
-
-### 🎵 語音配置
-
-系統支援多種 Edge-TTS 語音：
-
-| 語音ID | 顯示名稱 | Edge-TTS語音 | 適用性別 |
-|--------|----------|--------------|----------|
-| male-qn-qingse | 青澀男 | zh-CN-YunxiNeural | 男性 |
-| male-qn-badao | 霸氣男 | zh-CN-YunyangNeural | 男性 |
-| wumei_yujie | 嫵媚女 | zh-CN-XiaoxiaoNeural | 女性 |
-| female-tianmei | 甜美女 | zh-CN-XiaoyiNeural | 女性 |
-
-### 📱 響應式設計
-
-#### 桌面版 (≥769px)
-- 左右分割布局
-- 虛擬人物在左側，聊天區域在右側
-- 完整的控制面板和功能
-
-#### 平板版 (769px-1024px)
-- 垂直堆疊布局
-- 虛擬人物在上方，聊天區域在下方
-- 適配觸控操作
-
-#### 手機版 (≤768px)
-- 全螢幕沉浸式設計
-- 透明聊天覆蓋層
-- 毛玻璃效果
-- 聊天區域避免遮擋人物臉部
-
-## 🔧 技術架構
-
-### 後端技術棧
-- **FastAPI** 高性能 Web 框架
-- **Groq API** LLaMA 3.3 70B 模型
-- **Edge-TTS** 微軟語音合成
-- **Docker** 容器化部署
-
-### 前端技術棧
-- **WebGL** 3D 人物渲染
-- **WebAssembly** 高性能計算
-- **Web Audio API** 音頻處理
-- **現代 CSS** 響應式設計
-
-### 核心流程
-```
-用戶輸入 → LLM處理 → 文本分割 → TTS合成 → 音頻播放 → 人物動畫
-```
-
-## 🖥️ 使用教學
-
-### 基本操作
-
-1. **選擇人物**: 在下拉選單選擇想要的虛擬人物
-2. **選擇語音**: 在下拉選單選擇語音類型
-3. **輸入對話**: 在文字框輸入想說的話
-4. **發送對話**: 點擊"發送"按鈕或按 Enter 鍵
-5. **觀看效果**: 人物會說話並做出相應的嘴部動作
-
-### 鍵盤快捷鍵
-
-- **Enter**: 發送對話
-- **Shift + Enter**: 換行（在文字框中）
-
-## ⚙️ 環境變數
-
-可在 `.env` 文件中配置：
-
-```env
-# LLM 提供商選擇
-LLM_PROVIDER=groq
-
-# Groq API 配置
-GROQ_API_KEY=your_actual_groq_api_key_here
-GROQ_MODEL=llama-3.3-70b-versatile
-
-# 服務端口
-PORT=8888
-```
-
-## 🐛 故障排除
+## 🔧 故障排除
 
 ### 常見問題
 
-**Q: 人物配置載入失敗**
-A: 
-1. 確認 `avatars.json` 文件存在
-2. 檢查文件格式是否正確
-3. 確認人物資料夾完整
-4. 參考 `avatars.sample.json` 範例
+#### 1. CosyVoice 服務無法啟動
 
-**Q: Groq API 調用失敗**
-A: 檢查 `.env` 文件中的 `GROQ_API_KEY` 是否正確配置
+**檢查模型路徑**：
+```bash
+ls -la cosyvoice_models/{你的模型資料夾名稱}
+```
 
-**Q: 虛擬人物無法載入**
-A: 
-1. 確認人物資料夾存在且包含必要文件
-2. 檢查瀏覽器控制台錯誤
-3. 確認 WebAssembly 模組載入成功
+**查看容器日誌**：
+```bash
+docker-compose logs cosyvoice-service
+```
 
-**Q: 語音合成失敗**
-A: 
-1. 檢查 Edge-TTS 服務狀態
-2. 確認音頻權限已開啟
-3. 查看容器日誌: `docker-compose logs`
+#### 2. 聲音生成失敗
 
-**Q: 聊天室無法訪問**
-A: 
-1. 確認 Docker 容器正在運行
-2. 檢查端口 8888 未被占用
-3. 查看防火牆設置
+**檢查引擎狀態**：
+```bash
+curl http://localhost:8888/health
+```
+
+**檢查聲音配置**：
+```bash
+curl http://localhost:8888/tts/voices
+```
+
+#### 3. 虛擬人物無法載入
+
+**檢查人物資源**：
+```bash
+ls -la web_demo/static/avatars/your_character/
+```
+
+**檢查配置文件**：
+```bash
+cat web_demo/static/avatars/avatars.json
+```
+
+#### 4. 網絡連接問題
+
+**檢查容器網絡**：
+```bash
+docker network ls
+docker-compose ps
+```
 
 ### 日誌查看
 
 ```bash
-# 查看實時日誌
-docker-compose logs -f
+# 查看所有服務日誌
+docker-compose logs
 
 # 查看特定服務日誌
 docker-compose logs ai-virtual-human
+docker-compose logs cosyvoice-service
 
-# 查看最近50行日誌
-docker-compose logs --tail=50
+# 實時查看日誌
+docker-compose logs -f
 ```
 
-### 重置系統
+### 性能優化
+
+#### GPU 支援
+
+如果您有 NVIDIA GPU，在 `docker-compose.yaml` 中啟用 GPU 支援：
+
+```yaml
+cosyvoice-service:
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu]
+```
+
+#### 記憶體優化
+
+根據您的系統調整記憶體限制：
+
+```yaml
+cosyvoice-service:
+  deploy:
+    resources:
+      limits:
+        memory: 8G
+      reservations:
+        memory: 4G
+```
+
+## 📈 系統監控
+
+### 健康檢查
+
+系統提供完整的健康檢查端點：
 
 ```bash
-# 停止服務
-docker-compose down
-
-# 清理容器和鏡像
-docker-compose down --rmi all
-
-# 重新構建和啟動
-docker-compose up --build -d
+curl http://localhost:8888/health
 ```
 
-## 🔄 開發指南
+響應示例：
+```json
+{
+  "status": "healthy",
+  "tts_engines": [
+    {
+      "id": "edge_tts",
+      "name": "Microsoft EdgeTTS",
+      "status": "available"
+    },
+    {
+      "id": "cosyvoice",
+      "name": "CosyVoice",
+      "status": "available"
+    }
+  ],
+  "total_engines": 2,
+  "available_engines": 2
+}
+```
 
-### 本地開發
+### 性能指標
 
-1. **安裝依賴**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+- **引擎可用性**: 實時監控 TTS 引擎狀態
+- **響應時間**: 追蹤 API 響應延遲
+- **成功率**: 統計請求成功率
+- **資源使用**: 監控 CPU 和記憶體使用
 
-2. **配置人物**:
-   ```bash
-   cp web_demo/static/avatars/avatars.sample.json web_demo/static/avatars/avatars.json
-   ```
+## 🔒 安全注意事項
 
-3. **啟動開發服務器**:
-   ```bash
-   cd web_demo
-   python server.py
-   ```
+### 生產環境部署
 
-4. **訪問開發環境**:
-   - 標準版: http://localhost:8888/static/chat_room.html
-   - 去水印版: http://localhost:8888/static/chat_room_no_watermark.html
+1. **API 限流**: 添加 API 請求限制
+2. **輸入驗證**: 驗證用戶輸入內容和長度
+3. **HTTPS**: 使用 HTTPS 加密通信
+4. **防火牆**: 限制不必要的端口訪問
+5. **日誌監控**: 監控異常訪問和錯誤
 
-### 代碼結構
+### 數據隱私
 
-- `server.py`: 主要後端邏輯
-- `voiceapi/llm.py`: LLM 整合模組
-- `static/chat_room.html`: 標準聊天室界面
-- `static/chat_room_no_watermark.html`: 去水印版聊天室
-- `static/js/MiniLive2.js`: 標準版前端核心邏輯
-- `static/js/MiniLive2_v2.js`: 去水印版前端邏輯
-- `static/avatars/`: 人物資源管理
+1. **敏感信息**: 不要在日誌中記錄敏感信息
+2. **API 密鑰**: 使用環境變數管理 API 密鑰
+3. **用戶數據**: 遵循數據保護法規
+4. **模型安全**: 保護自定義模型文件
 
-### 添加新功能
+## 🚀 部署選項
 
-1. **後端 API**: 在 `server.py` 中添加新端點
-2. **前端邏輯**: 在相應的 JS 文件中實現
-3. **界面元素**: 在 HTML 中添加 UI 組件
-4. **測試**: 確保功能正常運作
+### 開發環境
 
-### 自定義配置
+```bash
+# 快速啟動（使用預設配置）
+docker-compose up
+```
 
-#### 修改客服提示詞
-編輯 `voiceapi/llm.py` 中的 `CUSTOMER_SERVICE_PROMPT` 變數。
+### 生產環境
 
-#### 添加新的制式回答
-在 `get_standard_response()` 函數中添加新的關鍵字匹配規則。
+```bash
+# 生產環境部署
+docker-compose -f docker-compose.yaml -f docker-compose.prod.yaml up -d
+```
 
-#### 調整語音設置
-在 HTML 文件中修改 `voiceDropdown` 的選項。
+### 雲端部署
 
-## 🔄 降級機制
+支援部署到以下平台：
+- **AWS ECS**: 使用 Fargate 或 EC2
+- **Google Cloud Run**: 容器化部署
+- **Azure Container Instances**: 快速部署
+- **Kubernetes**: 大規模集群部署
 
-系統具備完善的降級機制：
 
-- **API 失敗處理** 自動切換到標準回應
-- **網路錯誤恢復** 友善的錯誤提示
-- **服務連續性** 確保客服不中斷
-- **配置錯誤警示** 明確的錯誤提示和解決方案
+### 代碼規範
 
-## 📝 更新日誌
+- 使用 Python PEP 8 代碼風格
+- 添加適當的註釋和文檔
+- 編寫單元測試
+- 遵循項目的目錄結構
 
-### v3.0.0 (當前版本)
-- ✅ 整合專業 AI 客服功能
-- ✅ 新增響應式聊天室設計
-- ✅ 添加去水印版本
-- ✅ 完善錯誤處理機制
-- ✅ 優化人物配置管理
-- ✅ 改進 Git 配置和文檔
 
-### v2.0.0
-- ✅ 重構為靜態人物配置系統
-- ✅ 移除複雜的動態 API 依賴
-- ✅ 新增人物配置 JSON 管理
-- ✅ 優化目錄結構
-- ✅ 完善 Docker 化部署
-
-### v1.0.0
-- ✅ 基礎對話功能
-- ✅ Edge-TTS 整合
-- ✅ WebAssembly 嘴部動畫
-- ✅ Docker 容器化
-
-## 🤝 貢獻指南
-
-歡迎提交 Issue 和 Pull Request！
-
-1. Fork 本項目
-2. 創建功能分支: `git checkout -b feature/new-feature`
-3. 提交更改: `git commit -am 'Add new feature'`
-4. 推送分支: `git push origin feature/new-feature`
-5. 提交 Pull Request
-
-## 📄 許可證
-
-本項目基於原始 DH_Live 項目修改，請遵循相應的開源許可證。
 
 ## 🙏 致謝
 
-- 原始 DH_Live 項目團隊
-- Groq 和 LLaMA 模型
-- Edge-TTS 項目
-- WebAssembly 社群
-- Docker 社群
+特別感謝以下開源項目：
+
+- **[DH_Live](https://github.com/kleinlee/DH_live)**: 虛擬人渲染核心
+- **[EdgeTTS](https://github.com/rany2/edge-tts)**: 微軟語音合成
+- **[CosyVoice](https://github.com/FunAudioLLM/CosyVoice)**: 阿里巴巴語音合成
+- **[FastAPI](https://fastapi.tiangolo.com/)**: 現代 Python Web 框架
+- **[Docker](https://www.docker.com/)**: 容器化平台
 
 ---
 
-**享受與 AI 虛擬客服的專業對話體驗！** 🎉
+**© 2025 Create Intelligens Inc. | AI Virtual Human Technology**
 
-**創造智能科技股份有限公司**  
-專業的 Martech 行銷科技解決方案提供商
+> 🌟 如果這個項目對您有幫助，請給我們一個 Star！
