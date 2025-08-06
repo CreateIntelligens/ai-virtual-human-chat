@@ -10,6 +10,7 @@ AI Virtual Human 是一個完整的智能虛擬人解決方案，整合了先進
 
 - **🎭 高品質虛擬人渲染**：基於 WebGL 的實時人物動畫
 - **🎵 雙引擎 TTS 系統**：EdgeTTS + CosyVoice 智能切換
+- **🔧 智能音頻處理**：CosyVoice 自動重採樣，確保完美同步
 - **🤖 智能對話系統**：支援多種 LLM 服務
 - **🐳 Docker 容器化部署**：一鍵啟動完整服務
 - **📱 響應式設計**：支援桌面、平板、手機多端適配
@@ -34,7 +35,7 @@ cp .env.sample .env
 # 編輯 .env 文件，設置您的 API 密鑰
 
 # 3. 配置 CosyVoice 聲音
-cp cosyvoice-service/config/voices.sample.json cosyvoice-service/config/voices.json
+cp cosyvoice-service/config/voices.sample.json cosyvoice-service/config/voices.local.json
 # 根據需要修改聲音配置
 
 # 4. 配置虛擬人物
@@ -122,6 +123,7 @@ ai-virtual-human/
 - **優勢**: 高品質、可定制、支援微調
 - **聲音**: 溫柔女聲（艾卡）、沉穩男聲（主播）
 - **適用**: 高品質音頻需求
+- **🔧 自動重採樣**: 22.05kHz → 16kHz，確保與虛擬人系統完美兼容
 
 ### 智能引擎選擇
 
@@ -286,7 +288,7 @@ GROQ_MODEL=llama-3.1-70b-versatile
 
 ### CosyVoice 聲音配置
 
-複製 `cosyvoice-service/config/voices.sample.json` 為 `voices.json` 並配置：
+複製 `cosyvoice-service/config/voices.example.json` 為 `voices.local.json` 並配置：
 
 ```json
 {
@@ -381,7 +383,22 @@ ls -la web_demo/static/avatars/your_character/
 cat web_demo/static/avatars/avatars.json
 ```
 
-#### 4. 網絡連接問題
+#### 4. 音頻同步問題
+
+**CosyVoice 音頻與虛擬人不同步**：
+- 系統已自動啟用重採樣功能，將 22.05kHz 轉換為 16kHz
+- 檢查日誌中是否有重採樣成功的訊息：
+```bash
+docker-compose logs ai-virtual-human | grep "重採樣"
+```
+
+**重採樣功能異常**：
+- 確認容器內 FFmpeg 可用：
+```bash
+docker-compose exec ai-virtual-human ffmpeg -version
+```
+
+#### 5. 網絡連接問題
 
 **檢查容器網絡**：
 ```bash

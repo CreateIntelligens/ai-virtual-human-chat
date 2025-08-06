@@ -12,7 +12,8 @@
 .env.production
 
 # CosyVoice 聲音配置 (用戶自定義)
-cosyvoice-service/config/voices.json
+cosyvoice-service/config/voices.sample.json
+cosyvoice-service/config/voices.local.json
 
 # 人物配置文件 (用戶自定義)
 web_demo/static/avatars/avatars.json

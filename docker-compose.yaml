@@ -10,6 +10,13 @@ services:
       - .:/app
     environment:
       - PYTHONPATH=/app
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     env_file:
       - .env
     depends_on:
@@ -31,6 +38,13 @@ services:
       - MODEL_DIR=./models/trained_models20250801/cosyvoice2/
       - PORT=50001
       - PYTHONPATH=/app:/app/third_party/Matcha-TTS
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     restart: always
     working_dir: /app
     command: python3 runtime/python/fastapi/server.py --port 50001 --model_dir ./models/trained_models20250801/cosyvoice2/

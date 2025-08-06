@@ -5,6 +5,8 @@ import os
 import base64
 import asyncio
 import aiohttp
+import tempfile
+import subprocess
 from typing import Optional, Dict, Any
 from .base_tts import BaseTTSEngine
 
@@ -82,14 +84,21 @@ class CosyVoiceEngine(BaseTTSEngine):
             ) as response:
                 
                 if response.status == 200:
-                    # 獲取 WAV 音頻數據
+                    # 獲取 WAV 音頻數據 (22.05kHz)
                     audio_data = await response.read()
                     
-                    # 編碼為 Base64
-                    base64_string = base64.b64encode(audio_data).decode('utf-8')
-                    
-                    print(f"✅ CosyVoice 生成成功: {len(audio_data)} bytes")
-                    return base64_string
+                    # 重採樣為 16kHz 以匹配虛擬人系統
+                    resampled_audio = await self._resample_audio(audio_data)
+                    if resampled_audio:
+                        # 編碼為 Base64
+                        base64_string = base64.b64encode(resampled_audio).decode('utf-8')
+                        print(f"✅ CosyVoice 生成成功: {len(audio_data)} bytes -> {len(resampled_audio)} bytes (重採樣為16kHz)")
+                        return base64_string
+                    else:
+                        # 重採樣失敗，使用原始音頻
+                        base64_string = base64.b64encode(audio_data).decode('utf-8')
+                        print(f"⚠️ 重採樣失敗，使用原始22.05kHz音頻: {len(audio_data)} bytes")
+                        return base64_string
                 else:
                     error_text = await response.text()
                     print(f"❌ CosyVoice API 錯誤: {response.status} - {error_text}")
@@ -124,6 +133,49 @@ class CosyVoiceEngine(BaseTTSEngine):
             print(f"❌ 獲取聲音配置失敗: {e}")
         
         return None
+    
+    async def _resample_audio(self, audio_data: bytes) -> Optional[bytes]:
+        """將音頻從 22.05kHz 重採樣為 16kHz"""
+        try:
+            # 創建臨時文件
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as input_file:
+                input_filename = input_file.name
+                input_file.write(audio_data)
+            
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as output_file:
+                output_filename = output_file.name
+            
+            try:
+                # 使用 FFmpeg 重採樣
+                result = subprocess.run([
+                    'ffmpeg', '-y', '-i', input_filename,
+                    '-ar', '16000',  # 目標採樣率 16kHz
+                    '-ac', '1',      # 單聲道
+                    '-sample_fmt', 's16',  # 16位PCM
+                    output_filename
+                ], capture_output=True, text=True)
+                
+                if result.returncode != 0:
+                    print(f"❌ FFmpeg 重採樣失敗: {result.stderr}")
+                    return None
+                
+                # 讀取重採樣後的音頻數據
+                with open(output_filename, "rb") as f:
+                    resampled_data = f.read()
+                
+                return resampled_data
+                
+            finally:
+                # 清理臨時文件
+                try:
+                    os.unlink(input_filename)
+                    os.unlink(output_filename)
+                except:
+                    pass
+                    
+        except Exception as e:
+            print(f"❌ 重採樣過程失敗: {e}")
+            return None
     
     def get_available_voices(self) -> Dict[str, Dict[str, Any]]:
         """獲取可用的聲音列表"""
