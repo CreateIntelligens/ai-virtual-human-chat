@@ -336,7 +336,7 @@ IndexTTS 會在首次啟動時自動下載模型，如果下載失敗：
 - **[DH_Live](https://github.com/kleinlee/DH_live)**: 虛擬人渲染核心
 - **[EdgeTTS](https://github.com/rany2/edge-tts)**: 微軟語音合成
 - **[CosyVoice](https://github.com/FunAudioLLM/CosyVoice)**: 阿里巴巴語音合成
-- **[IndexTTS](https://github.com/IndexTeam/IndexTTS)**: 語音克隆技術
+- **[IndexTTS](https://github.com/index-tts/index-tts)**: 語音克隆技術
 
 ---
 
