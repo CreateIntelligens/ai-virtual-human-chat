@@ -33,15 +33,15 @@ ai-virtual-human/
 ├── 🐳 docker-compose.yaml          # Docker Compose 配置
 ├── ⚙️ .env                         # 環境配置（需要創建）
 │
-├── 🎵 cosyvoice_models/            # CosyVoice 模型存放目錄
-│   └── [您的模型文件夾]/            # 放置您的 CosyVoice 微調模型
-│
 ├── 🎵 cosyvoice-service/           # CosyVoice 語音合成服務
+│   ├── 🎵 models/                  # CosyVoice 模型存放目錄
+│   │   └── [您的模型文件夾]/        # 放置您的 CosyVoice 微調模型
 │   └── 🎛️ config/                  # 聲音配置目錄
 │       ├── 📄 voices.local.json    # 聲音配置（需要創建）
 │       └── 🎵 audio_samples/       # 參考音頻文件目錄
 │
 ├── 🔬 indextts-service/            # IndexTTS 語音克隆服務
+│   ├── 📁 checkpoints/             # IndexTTS 模型存放目錄
 │   └── 🎛️ config/                  # 聲音配置目錄
 │       ├── 📄 voices.json          # 聲音配置（需要創建）
 │       └── 🎵 audio_samples/       # 參考音頻文件目錄
@@ -96,8 +96,8 @@ INDEXTTS_API_URL=http://indextts-service:6008
 如果您有 CosyVoice 微調模型：
 
 ```bash
-# 1. 將您的模型文件夾放入 cosyvoice_models/
-# 例如：cosyvoice_models/my_trained_model/
+# 1. 將您的模型文件夾放入 cosyvoice-service/models/
+# 例如：cosyvoice-service/models/my_trained_model/
 
 # 2. 配置聲音文件
 cp cosyvoice-service/config/voices.sample.json cosyvoice-service/config/voices.local.json
@@ -282,7 +282,7 @@ curl -X POST "http://localhost:8888/eb_stream" \
 
 **檢查模型路徑：**
 ```bash
-ls -la cosyvoice_models/
+ls -la cosyvoice-service/models/
 ```
 
 **查看容器日誌：**

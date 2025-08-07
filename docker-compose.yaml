@@ -34,7 +34,7 @@ services:
     ports:
       - "50001:50001"
     volumes:
-      - ./cosyvoice_models:/app/models
+      - ./cosyvoice-service/models:/app/models
       - ./cosyvoice-service/config:/app/config
     environment:
       - MODEL_DIR=./models/trained_models20250801/cosyvoice2/

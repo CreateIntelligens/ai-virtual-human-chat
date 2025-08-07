@@ -26,9 +26,9 @@ web_demo/static/avatars/*/
 !web_demo/static/avatars/avatars.sample.json
 
 # CosyVoice 模型文件 (保留目錄結構，忽略模型內容)
-cosyvoice_models/*
-!cosyvoice_models/.gitkeep
-!cosyvoice_models/README.md
+cosyvoice-service/models/*
+!cosyvoice-service/models/.gitkeep
+!cosyvoice-service/models/README.md
 
 # 音頻樣本文件
 cosyvoice-service/config/audio_samples/*.mp3
