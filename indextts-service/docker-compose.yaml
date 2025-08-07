@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  indextts-api:
+    build: .
+    container_name: indextts-api
+    ports:
+      - "6008:6008"
+    volumes:
+      # 掛載整個專案目錄，支援開發時即時更新
+      - .:/app
+      # 持久化模型檔案
+      - ./checkpoints:/app/checkpoints
+      # 持久化輸出檔案
+      - ./outputs:/app/outputs
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6008/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

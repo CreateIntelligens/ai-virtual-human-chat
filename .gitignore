@@ -12,7 +12,6 @@
 .env.production
 
 # CosyVoice 聲音配置 (用戶自定義)
-cosyvoice-service/config/voices.sample.json
 cosyvoice-service/config/voices.local.json
 
 # 人物配置文件 (用戶自定義)
@@ -35,6 +34,27 @@ cosyvoice_models/*
 cosyvoice-service/config/audio_samples/*.mp3
 cosyvoice-service/config/audio_samples/*.wav
 !cosyvoice-service/config/audio_samples/README.md
+
+# IndexTTS 模型文件 (自動下載，不需要版本控制)
+indextts-service/checkpoints/*.pth
+indextts-service/checkpoints/*.model
+indextts-service/checkpoints/*.vocab
+indextts-service/checkpoints/.cache/
+!indextts-service/checkpoints/.gitkeep
+!indextts-service/checkpoints/config.yaml
+
+# IndexTTS 輸出文件
+indextts-service/outputs/
+indextts-service/temp_prompt_*.wav
+
+# IndexTTS 配置文件 (用戶自定義)
+indextts-service/config/voices.json
+!indextts-service/config/voices.sample.json
+
+# IndexTTS 音頻樣本文件
+indextts-service/config/audio_samples/*.mp3
+indextts-service/config/audio_samples/*.wav
+!indextts-service/config/audio_samples/README.md
 
 # ===========================================
 # 測試和臨時文件

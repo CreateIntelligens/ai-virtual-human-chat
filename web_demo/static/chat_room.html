@@ -367,6 +367,19 @@
             display: none !important;
         }
 
+        /* 版本標識 */
+        .version-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            z-index: 15;
+        }
+
         /* 版權聲明樣式 */
         .footer {
             text-align: center;
@@ -634,6 +647,14 @@
                 text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
                 color: rgba(255, 255, 255, 0.6);
             }
+
+            /* 手機版版本標識 */
+            .version-badge {
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                z-index: 20;
+            }
         }
     </style>
 </head>
@@ -721,6 +742,203 @@
         let isChatting = false;
         let controller;
         let buffer = "";
+        
+        // 雙引擎 TTS 管理
+        let availableEngines = {};
+        let engineVoices = {};
+
+        // 載入 TTS 引擎狀態
+        async function loadTTSEngines() {
+            try {
+                console.log('🔍 正在檢測 TTS 引擎...');
+                const response = await fetch('/tts/providers');
+                const data = await response.json();
+                
+                availableEngines = {};
+                data.providers.forEach(provider => {
+                    availableEngines[provider.id] = provider;
+                    console.log(`${provider.status === 'available' ? '✅' : '❌'} ${provider.name} 引擎${provider.status === 'available' ? '可用' : '不可用'}`);
+                });
+                
+                console.log('✅ TTS 引擎狀態檢測完成');
+                
+                // 載入聲音列表
+                await loadVoices();
+                
+            } catch (error) {
+                console.error('❌ 載入 TTS 引擎失敗:', error);
+                console.log('⚠️ 將使用預設聲音配置');
+            }
+        }
+
+        // 載入聲音列表
+        async function loadVoices() {
+            try {
+                const response = await fetch('/tts/voices');
+                const data = await response.json();
+                engineVoices = data;
+                
+                console.log('🎵 聲音列表載入完成');
+                updateVoiceDropdown();
+                
+            } catch (error) {
+                console.error('❌ 載入聲音列表失敗:', error);
+                console.log('⚠️ 將使用預設聲音選項');
+            }
+        }
+
+        // 更新聲音下拉選單
+        function updateVoiceDropdown() {
+            const voiceDropdown = document.getElementById('voiceDropdown');
+            
+            // 清空現有選項
+            voiceDropdown.innerHTML = '';
+            
+            let edgeTTSVoices = [];
+            let cosyVoiceVoices = [];
+            let indexTTSVoices = [];
+            
+            // 收集所有可用引擎的聲音，按引擎分類
+            Object.keys(engineVoices).forEach(provider => {
+                if (availableEngines[provider] && availableEngines[provider].status === 'available') {
+                    const providerVoices = engineVoices[provider].voices || {};
+                    const engineName = availableEngines[provider].name || provider;
+                    
+                    Object.keys(providerVoices).forEach(voiceId => {
+                        const voice = providerVoices[voiceId];
+                        const voiceData = {
+                            value: voiceId,
+                            text: voice.display_name,
+                            provider: provider,
+                            engineName: engineName,
+                            recommended: voice.recommended
+                        };
+                        
+                        // 按引擎分類
+                        if (provider === 'edge_tts') {
+                            edgeTTSVoices.push(voiceData);
+                        } else if (provider === 'cosyvoice') {
+                            cosyVoiceVoices.push(voiceData);
+                        } else if (provider === 'indextts') {
+                            indexTTSVoices.push(voiceData);
+                        }
+                    });
+                }
+            });
+            
+            // 如果沒有從 API 載入到聲音，使用預設選項
+            if (edgeTTSVoices.length === 0 && cosyVoiceVoices.length === 0) {
+                console.log('🎵 使用預設聲音選項');
+                edgeTTSVoices = [
+                    { value: "female-tianmei", text: "甜美女聲", provider: "edge_tts", engineName: "EdgeTTS" },
+                    { value: "wumei_yujie", text: "嫵媚女聲", provider: "edge_tts", engineName: "EdgeTTS" },
+                    { value: "male-qn-qingse", text: "青澀男聲", provider: "edge_tts", engineName: "EdgeTTS" },
+                    { value: "male-qn-badao", text: "霸氣男聲", provider: "edge_tts", engineName: "EdgeTTS" }
+                ];
+            }
+            
+            // 對每個引擎內的聲音按名稱排序
+            edgeTTSVoices.sort((a, b) => a.text.localeCompare(b.text));
+            cosyVoiceVoices.sort((a, b) => a.text.localeCompare(b.text));
+            indexTTSVoices.sort((a, b) => a.text.localeCompare(b.text));
+            
+            // 先添加 EdgeTTS 聲音（快速）
+            if (edgeTTSVoices.length > 0) {
+                // 添加分組標題
+                const edgeGroup = document.createElement('optgroup');
+                edgeGroup.label = '🚀 EdgeTTS (快速)';
+                voiceDropdown.appendChild(edgeGroup);
+                
+                edgeTTSVoices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice.value;
+                    option.textContent = voice.text;
+                    option.dataset.provider = voice.provider;
+                    edgeGroup.appendChild(option);
+                });
+            }
+            
+            // 再添加 CosyVoice 聲音（高品質）
+            if (cosyVoiceVoices.length > 0) {
+                // 添加分組標題
+                const cosyGroup = document.createElement('optgroup');
+                cosyGroup.label = '🎭 CosyVoice (高品質)';
+                voiceDropdown.appendChild(cosyGroup);
+                
+                cosyVoiceVoices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice.value;
+                    option.textContent = voice.text;
+                    option.dataset.provider = voice.provider;
+                    cosyGroup.appendChild(option);
+                });
+            }
+            
+            // 最後添加 IndexTTS 聲音（語音克隆）
+            if (indexTTSVoices.length > 0) {
+                // 添加分組標題
+                const indexGroup = document.createElement('optgroup');
+                indexGroup.label = '🔬 IndexTTS (語音克隆)';
+                voiceDropdown.appendChild(indexGroup);
+                
+                indexTTSVoices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice.value;
+                    option.textContent = voice.text;
+                    option.dataset.provider = voice.provider;
+                    indexGroup.appendChild(option);
+                });
+            }
+            
+            const totalVoices = edgeTTSVoices.length + cosyVoiceVoices.length + indexTTSVoices.length;
+            console.log(`🎵 已載入 ${totalVoices} 個聲音選項 (EdgeTTS: ${edgeTTSVoices.length}, CosyVoice: ${cosyVoiceVoices.length}, IndexTTS: ${indexTTSVoices.length})`);
+        }
+
+        // 獲取當前選擇聲音的提供商（用於自動選擇引擎）
+        function getCurrentProvider() {
+            const voiceDropdown = document.getElementById('voiceDropdown');
+            const selectedVoiceId = voiceDropdown.value;
+            
+            // 1. 解析前綴自動選擇引擎（最優先）
+            if (selectedVoiceId.startsWith('edge_')) {
+                console.log(`🎯 前綴識別聲音 ${selectedVoiceId} 屬於引擎: edge_tts`);
+                return 'edge_tts';
+            } else if (selectedVoiceId.startsWith('cosyvoice_')) {
+                console.log(`🎯 前綴識別聲音 ${selectedVoiceId} 屬於引擎: cosyvoice`);
+                return 'cosyvoice';
+            } else if (selectedVoiceId.startsWith('indextts_')) {
+                console.log(`🎯 前綴識別聲音 ${selectedVoiceId} 屬於引擎: indextts`);
+                return 'indextts';
+            }
+            
+            // 2. 從已載入的引擎聲音數據中動態查找
+            for (const [provider, data] of Object.entries(engineVoices)) {
+                if (data.voices && data.voices[selectedVoiceId]) {
+                    console.log(`🎯 動態識別聲音 ${selectedVoiceId} 屬於引擎: ${provider}`);
+                    return provider;
+                }
+            }
+            
+            // 3. 備用方案：根據聲音 ID 判斷主要引擎（向後兼容）
+            const edgeTTSVoices = ['female-tianmei', 'wumei_yujie', 'male-qn-qingse', 'male-qn-badao'];
+            const cosyVoiceVoices = ['gentle_female', 'professional_male'];
+            const indexTTSVoices = ['Aikka', 'anchorman1'];
+            
+            if (edgeTTSVoices.includes(selectedVoiceId)) {
+                console.log(`🎯 靜態識別聲音 ${selectedVoiceId} 屬於引擎: edge_tts`);
+                return 'edge_tts';
+            } else if (cosyVoiceVoices.includes(selectedVoiceId)) {
+                console.log(`🎯 靜態識別聲音 ${selectedVoiceId} 屬於引擎: cosyvoice`);
+                return 'cosyvoice';
+            } else if (indexTTSVoices.includes(selectedVoiceId)) {
+                console.log(`🎯 靜態識別聲音 ${selectedVoiceId} 屬於引擎: indextts`);
+                return 'indextts';
+            }
+            
+            // 4. 如果無法判斷，返回 null 讓系統自動選擇
+            console.log(`⚠️ 無法識別聲音 ${selectedVoiceId}，使用系統自動選擇`);
+            return null;
+        }
 
         // 初始化音頻上下文（改進版）
         async function initAudioContext() {
@@ -811,6 +1029,48 @@
             }
         }
 
+        // 顯示音頻生成等待指示器
+        function showAudioWaitingIndicator() {
+            const chatMessages = document.getElementById('chatMessages');
+            let waitingDiv = document.getElementById('audioWaitingIndicator');
+            
+            if (!waitingDiv) {
+                waitingDiv = document.createElement('div');
+                waitingDiv.id = 'audioWaitingIndicator';
+                waitingDiv.className = 'status-indicator info';
+                waitingDiv.innerHTML = '🎵 正在生成語音，請稍候...';
+                chatMessages.appendChild(waitingDiv);
+            }
+            
+            waitingDiv.style.display = 'block';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // 隱藏音頻生成等待指示器
+        function hideAudioWaitingIndicator() {
+            const waitingDiv = document.getElementById('audioWaitingIndicator');
+            if (waitingDiv) {
+                waitingDiv.style.display = 'none';
+            }
+        }
+
+        // 顯示虛擬人物等待動畫
+        function showAvatarWaitingAnimation() {
+            const startMessage = document.getElementById('startMessage');
+            if (startMessage) {
+                startMessage.textContent = '🤔 正在思考回應...';
+                startMessage.style.display = 'block';
+            }
+        }
+
+        // 隱藏虛擬人物等待動畫
+        function hideAvatarWaitingAnimation() {
+            const startMessage = document.getElementById('startMessage');
+            if (startMessage) {
+                startMessage.style.display = 'none';
+            }
+        }
+
         // 添加訊息到聊天區域
         function addMessage(text, isUser = false) {
             const chatMessages = document.getElementById('chatMessages');
@@ -872,8 +1132,18 @@
             addMessage(inputValue, true);
             messageInput.value = '';
             
-            // 顯示打字指示器
+            // 顯示等待動畫
             showTypingIndicator();
+            showAvatarWaitingAnimation();
+
+            // 獲取當前選擇的引擎（自動選擇）
+            const provider = getCurrentProvider();
+            console.log(`🎯 用戶選擇聲音: ${voiceDropdown.value}`);
+            if (provider) {
+                console.log(`🤖 自動選擇引擎: ${provider}`);
+            } else {
+                console.log('🤖 使用系統自動選擇引擎');
+            }
 
             try {
                 const response = await fetch(`${window.location.protocol}//${window.location.host}/eb_stream`, {
@@ -883,7 +1153,8 @@
                         "input_mode": "text",
                         "prompt": inputValue,
                         "voice_id": voiceDropdown.value,
-                        "voice_speed": ""
+                        "voice_speed": "",
+                        "provider": provider  // 添加引擎選擇參數
                     }),
                     signal: controller.signal
                 });
@@ -933,6 +1204,16 @@
                             }
 
                             if (data.audio) {
+                                // 隱藏等待動畫（第一次收到音頻時）
+                                hideAvatarWaitingAnimation();
+                                
+                                // 記錄語音合成成功
+                                if (provider) {
+                                    console.log(`🎵 語音合成成功: ${availableEngines[provider]?.name || provider}`);
+                                } else {
+                                    console.log('🎵 語音合成成功: 系統自動選擇');
+                                }
+                                
                                 // 解碼Base64音頻數據
                                 const binaryString = atob(data.audio);
                                 const audioUint8Array = new Uint8Array(binaryString.length);
@@ -949,6 +1230,7 @@
 
                             if (data.endpoint) {
                                 isEnding = true;
+                                hideAvatarWaitingAnimation(); // 確保等待動畫被隱藏
                             }
                         } catch (e) {
                             console.error('解析JSON失敗:', e);
@@ -959,9 +1241,11 @@
                 
             } catch (error) {
                 hideTypingIndicator();
-                addStatusIndicator(`錯誤: ${error.message}`, 'error');
+                hideAvatarWaitingAnimation();
+                addStatusIndicator(`❌ TTS 引擎錯誤: ${error.message}`, 'error');
                 sendButton.disabled = false;
                 isChatting = false;
+                console.error('❌ TTS 處理失敗:', error);
             }
         }
 
@@ -1150,14 +1434,10 @@
                 addMessage(welcomeText, false);
                 console.log('✅ 歡迎訊息已顯示');
                 
-                // 2. 載入人物配置並生成下拉選單
-                const config = await loadAvatarConfig();
-                if (!config) {
-                    console.warn('人物配置載入失敗，使用預設配置');
-                }
-                if (config) {
-                    populateAvatarDropdown(config);
-                }
+                // 2. 載入 TTS 引擎狀態
+                await loadTTSEngines();
+                
+                // 注意：人物配置載入和下拉選單填充已由 MiniLive2.js 統一處理
                 
                 // 3. 啟動虛擬人物監控
                 setTimeout(() => {

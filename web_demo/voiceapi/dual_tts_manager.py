@@ -1,5 +1,5 @@
 """
-EdgeTTS + CosyVoice 雙引擎管理器
+EdgeTTS + CosyVoice + IndexTTS 三引擎管理器
 """
 import os
 import asyncio
@@ -7,10 +7,11 @@ from typing import Optional, Dict, Any, List
 from .tts_config_manager import TTSConfigManager
 from .tts_engines.edge_tts_engine import EdgeTTSEngine
 from .tts_engines.cosyvoice_engine import CosyVoiceEngine
+from .tts_engines.indextts_engine import IndexTTSEngine
 
 
 class DualTTSManager:
-    """EdgeTTS + CosyVoice 雙引擎管理器"""
+    """EdgeTTS + CosyVoice + IndexTTS 三引擎管理器"""
     
     def __init__(self):
         self.engines = {}
@@ -22,8 +23,8 @@ class DualTTSManager:
         await self.initialize_engines()
         
     async def initialize_engines(self):
-        """初始化 EdgeTTS 和 CosyVoice 引擎"""
-        enabled_providers = os.getenv('TTS_ENABLED_PROVIDERS', 'edge_tts,cosyvoice').split(',')
+        """初始化 EdgeTTS、CosyVoice 和 IndexTTS 引擎"""
+        enabled_providers = os.getenv('TTS_ENABLED_PROVIDERS', 'edge_tts,cosyvoice,indextts').split(',')
         
         for provider in enabled_providers:
             provider = provider.strip()
@@ -35,6 +36,10 @@ class DualTTSManager:
                         if await engine.initialize():
                             self.engines[provider] = engine
                             print(f"✅ EdgeTTS 引擎已啟用")
+                        else:
+                            print(f"⚠️ EdgeTTS 引擎初始化失敗")
+                    else:
+                        print(f"⚠️ EdgeTTS 配置文件未找到")
                 
                 elif provider == 'cosyvoice' and os.getenv('COSYVOICE_ENABLED', 'true').lower() == 'true':
                     config = self.config_manager.get_provider_config('cosyvoice')
@@ -43,9 +48,29 @@ class DualTTSManager:
                         if await engine.initialize():
                             self.engines[provider] = engine
                             print(f"✅ CosyVoice 引擎已啟用")
+                        else:
+                            print(f"⚠️ CosyVoice 引擎初始化失敗")
+                    else:
+                        print(f"⚠️ CosyVoice 配置文件未找到")
+                
+                elif provider == 'indextts' and os.getenv('INDEXTTS_ENABLED', 'true').lower() == 'true':
+                    config = self.config_manager.get_provider_config('indextts')
+                    if config:
+                        engine = IndexTTSEngine(config)
+                        if await engine.initialize():
+                            self.engines[provider] = engine
+                            print(f"✅ IndexTTS 引擎已啟用")
+                        else:
+                            print(f"⚠️ IndexTTS 引擎初始化失敗（可能是服務未啟動）")
+                    else:
+                        print(f"⚠️ IndexTTS 配置文件未找到")
                         
             except Exception as e:
                 print(f"❌ {provider} 引擎初始化失敗: {e}")
+                # 繼續初始化其他引擎，不讓單個引擎的錯誤影響整個系統
+                continue
+        
+        print(f"🎯 TTS 引擎初始化完成，共啟用 {len(self.engines)} 個引擎: {list(self.engines.keys())}")
     
     async def generate_audio(self, text: str, provider: str = None, voice_id: str = "female-tianmei", **kwargs) -> Optional[str]:
         """生成音頻，嚴格按照指定引擎執行，不進行降級"""
@@ -102,14 +127,22 @@ class DualTTSManager:
         """獲取所有引擎的聲音列表"""
         all_voices = {}
         for provider, engine in self.engines.items():
-            if engine.is_available:
-                voices = engine.get_available_voices()
-                provider_config = self.config_manager.get_provider_config(provider)
-                all_voices[provider] = {
-                    "provider_info": provider_config,
-                    "voices": voices,
-                    "recommended": engine.get_recommended_voices()
-                }
+            try:
+                if engine.is_available:
+                    voices = engine.get_available_voices()
+                    provider_config = self.config_manager.get_provider_config(provider)
+                    all_voices[provider] = {
+                        "provider_info": provider_config,
+                        "voices": voices,
+                        "recommended": engine.get_recommended_voices()
+                    }
+                    print(f"✅ 成功獲取 {provider} 引擎聲音列表: {len(voices)} 個聲音")
+                else:
+                    print(f"⚠️ {provider} 引擎不可用，跳過")
+            except Exception as e:
+                print(f"❌ 獲取 {provider} 引擎聲音列表失敗: {e}")
+                # 繼續處理其他引擎，不讓單個引擎的錯誤影響整個系統
+                continue
         return all_voices
     
     def get_provider_voices(self, provider: str) -> Dict[str, Any]:

@@ -796,6 +796,7 @@
             
             let edgeTTSVoices = [];
             let cosyVoiceVoices = [];
+            let indexTTSVoices = [];
             
             // 收集所有可用引擎的聲音，按引擎分類
             Object.keys(engineVoices).forEach(provider => {
@@ -818,6 +819,8 @@
                             edgeTTSVoices.push(voiceData);
                         } else if (provider === 'cosyvoice') {
                             cosyVoiceVoices.push(voiceData);
+                        } else if (provider === 'indextts') {
+                            indexTTSVoices.push(voiceData);
                         }
                     });
                 }
@@ -837,6 +840,7 @@
             // 對每個引擎內的聲音按名稱排序
             edgeTTSVoices.sort((a, b) => a.text.localeCompare(b.text));
             cosyVoiceVoices.sort((a, b) => a.text.localeCompare(b.text));
+            indexTTSVoices.sort((a, b) => a.text.localeCompare(b.text));
             
             // 先添加 EdgeTTS 聲音（快速）
             if (edgeTTSVoices.length > 0) {
@@ -870,8 +874,24 @@
                 });
             }
             
-            const totalVoices = edgeTTSVoices.length + cosyVoiceVoices.length;
-            console.log(`🎵 已載入 ${totalVoices} 個聲音選項 (EdgeTTS: ${edgeTTSVoices.length}, CosyVoice: ${cosyVoiceVoices.length})`);
+            // 最後添加 IndexTTS 聲音（語音克隆）
+            if (indexTTSVoices.length > 0) {
+                // 添加分組標題
+                const indexGroup = document.createElement('optgroup');
+                indexGroup.label = '🔬 IndexTTS (語音克隆)';
+                voiceDropdown.appendChild(indexGroup);
+                
+                indexTTSVoices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice.value;
+                    option.textContent = voice.text;
+                    option.dataset.provider = voice.provider;
+                    indexGroup.appendChild(option);
+                });
+            }
+            
+            const totalVoices = edgeTTSVoices.length + cosyVoiceVoices.length + indexTTSVoices.length;
+            console.log(`🎵 已載入 ${totalVoices} 個聲音選項 (EdgeTTS: ${edgeTTSVoices.length}, CosyVoice: ${cosyVoiceVoices.length}, IndexTTS: ${indexTTSVoices.length})`);
         }
 
         // 獲取當前選擇聲音的提供商（用於自動選擇引擎）
@@ -879,17 +899,44 @@
             const voiceDropdown = document.getElementById('voiceDropdown');
             const selectedVoiceId = voiceDropdown.value;
             
-            // 根據聲音 ID 判斷主要引擎
-            const edgeTTSVoices = ['female-tianmei', 'wumei_yujie', 'male-qn-qingse', 'male-qn-badao'];
-            const cosyVoiceVoices = ['gentle_female', 'cheerful_female', 'professional_male'];
-            
-            if (edgeTTSVoices.includes(selectedVoiceId)) {
+            // 1. 解析前綴自動選擇引擎（最優先）
+            if (selectedVoiceId.startsWith('edge_')) {
+                console.log(`🎯 前綴識別聲音 ${selectedVoiceId} 屬於引擎: edge_tts`);
                 return 'edge_tts';
-            } else if (cosyVoiceVoices.includes(selectedVoiceId)) {
+            } else if (selectedVoiceId.startsWith('cosyvoice_')) {
+                console.log(`🎯 前綴識別聲音 ${selectedVoiceId} 屬於引擎: cosyvoice`);
                 return 'cosyvoice';
+            } else if (selectedVoiceId.startsWith('indextts_')) {
+                console.log(`🎯 前綴識別聲音 ${selectedVoiceId} 屬於引擎: indextts`);
+                return 'indextts';
             }
             
-            // 如果無法判斷，返回 null 讓系統自動選擇
+            // 2. 從已載入的引擎聲音數據中動態查找
+            for (const [provider, data] of Object.entries(engineVoices)) {
+                if (data.voices && data.voices[selectedVoiceId]) {
+                    console.log(`🎯 動態識別聲音 ${selectedVoiceId} 屬於引擎: ${provider}`);
+                    return provider;
+                }
+            }
+            
+            // 3. 備用方案：根據聲音 ID 判斷主要引擎（向後兼容）
+            const edgeTTSVoices = ['female-tianmei', 'wumei_yujie', 'male-qn-qingse', 'male-qn-badao'];
+            const cosyVoiceVoices = ['gentle_female', 'professional_male'];
+            const indexTTSVoices = ['Aikka', 'anchorman1'];
+            
+            if (edgeTTSVoices.includes(selectedVoiceId)) {
+                console.log(`🎯 靜態識別聲音 ${selectedVoiceId} 屬於引擎: edge_tts`);
+                return 'edge_tts';
+            } else if (cosyVoiceVoices.includes(selectedVoiceId)) {
+                console.log(`🎯 靜態識別聲音 ${selectedVoiceId} 屬於引擎: cosyvoice`);
+                return 'cosyvoice';
+            } else if (indexTTSVoices.includes(selectedVoiceId)) {
+                console.log(`🎯 靜態識別聲音 ${selectedVoiceId} 屬於引擎: indextts`);
+                return 'indextts';
+            }
+            
+            // 4. 如果無法判斷，返回 null 讓系統自動選擇
+            console.log(`⚠️ 無法識別聲音 ${selectedVoiceId}，使用系統自動選擇`);
             return null;
         }
 

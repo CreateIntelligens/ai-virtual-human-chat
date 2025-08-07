@@ -22,6 +22,8 @@ services:
     depends_on:
       cosyvoice-service:
         condition: service_healthy
+      indextts-service:
+        condition: service_healthy
     restart: always
     working_dir: /app
     command: python web_demo/server.py
@@ -54,3 +56,33 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
+
+  indextts-service:
+    build: ./indextts-service
+    container_name: indextts-service
+    ports:
+      - "6008:6008"
+    volumes:
+      - ./indextts-service:/app
+      - ./indextts-service/config:/app/config
+      - ./indextts-service/checkpoints:/app/checkpoints  # 模型持久化存儲
+      - ./indextts-service/outputs:/app/outputs
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: always
+    working_dir: /app
+    command: python api.py --port 6008 --host 0.0.0.0 --model_dir checkpoints
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6008/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s  # 增加啟動時間，因為可能需要下載模型

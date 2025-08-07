@@ -105,7 +105,21 @@ class EdgeTTSEngine(BaseTTSEngine):
     def _get_engine_voice_id(self, voice_id: str) -> Optional[str]:
         """獲取引擎實際使用的聲音 ID"""
         voices = self.get_available_voices()
+        
+        # 1. 直接查找（原始 ID）
         voice_config = voices.get(voice_id)
         if voice_config:
             return voice_config.get("engine_voice_id")
+        
+        # 2. 查找帶前綴的 ID（為了兼容新的配置格式）
+        prefixed_voice_id = f"edge_{voice_id}"
+        voice_config = voices.get(prefixed_voice_id)
+        if voice_config:
+            return voice_config.get("engine_voice_id")
+        
+        # 3. 如果都找不到，檢查是否 voice_id 本身就是 engine_voice_id
+        for config in voices.values():
+            if config.get("engine_voice_id") == voice_id:
+                return voice_id
+        
         return None
