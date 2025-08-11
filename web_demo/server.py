@@ -13,6 +13,11 @@ from fastapi.middleware.cors import CORSMiddleware
 # 導入雙引擎 TTS 管理器
 from voiceapi.dual_tts_manager import dual_tts_manager
 
+# SenseVoice STT 服務配置
+SENSEVOICE_API_URL = os.getenv("SENSEVOICE_API_URL", "http://sensevoice-service:50002")
+SENSEVOICE_ENABLED = os.getenv("SENSEVOICE_ENABLED", "true").lower() == "true"
+SENSEVOICE_API_TIMEOUT = int(os.getenv("SENSEVOICE_API_TIMEOUT", "30"))
+
 app = FastAPI()
 
 # 添加 CORS 中間件以解決跨域問題
@@ -175,7 +180,13 @@ async def gen_stream(prompt, asr=False, voice_speed=None, voice_id=None, provide
             }
             yield f"{json.dumps(chunk)}\n"  # 使用换行符分隔 JSON 块
 
-        text_cache = llm_answer(prompt)
+        # 特殊處理 "." 輸入，避免 LLM 也回應 "."
+        if prompt.strip() == ".":
+            print("🔇 檢測到 '.' 輸入，提供友善提示")
+            text_cache = "我沒有聽清楚您說什麼，請您再說一遍好嗎？"
+        else:
+            text_cache = llm_answer(prompt)
+            
         sentences = split_sentence(text_cache)
 
         for index_, sub_text in enumerate(sentences):
@@ -229,10 +240,109 @@ async def process_audio(file: UploadFile = File(...)):
     # 调用 TTS 生成流式响应
     return StreamingResponse(gen_stream(text, asr=True), media_type="application/json")
 
+def post_process_transcription(text):
+    """對 SenseVoice 識別結果進行後處理"""
+    if not text:
+        return text
+    
+    # 如果整個文字只是一個中文句號，改為英文點號
+    if text.strip() == "。":
+        print(f"📝 純句號轉換: '。' -> '.'")
+        return "."
+    
+    # 如果文字以中文句號結尾，移除它
+    if text.endswith("。"):
+        processed_text = text[:-1]
+        print(f"📝 移除結尾句號: '{text}' -> '{processed_text}'")
+        return processed_text
+    
+    return text
+
+def is_valid_transcription(text):
+    """判斷語音識別結果是否有效，過濾常見的誤識別"""
+    if not text or not text.strip():
+        return False
+    
+    # 常見的誤識別單詞（靜音或噪音時容易出現）
+    false_positives = [
+        "okay", "ok", "the", "yes", "no", "a", "an", "i", "you", "we", "they",
+        "okay.", "ok.", "the.", "yes.", "no.", "a.", "an.", "i.", "you.", "we.", "they.",
+        "um", "uh", "er", "ah", "oh", "and", "or", "but", "so", "well",
+        "um.", "uh.", "er.", "ah.", "oh.", "and.", "or.", "but.", "so.", "well."
+    ]
+    
+    cleaned_text = text.lower().strip()
+    
+    # 如果是常見誤識別且很短，視為無效
+    if cleaned_text in false_positives and len(cleaned_text) <= 5:
+        print(f"🚫 過濾誤識別結果: '{text}' -> 改為 '.'")
+        return False
+    
+    # 如果只有標點符號，視為無效
+    if all(c in '.,!?;:' for c in cleaned_text):
+        print(f"🚫 過濾純標點符號: '{text}' -> 改為 '.'")
+        return False
+        
+    return True
+
+async def call_sensevoice_api(audio_data):
+    """調用 SenseVoice API 進行語音識別"""
+    try:
+        print("🎤 正在調用 SenseVoice API 進行語音識別...")
+        
+        # 準備文件上傳
+        files = {
+            'files': ('audio.wav', audio_data, 'audio/wav')
+        }
+        data = {
+            'keys': 'audio',
+            'lang': 'zh'  # 自動檢測語言
+        }
+        
+        # 調用 SenseVoice API
+        response = requests.post(
+            f"{SENSEVOICE_API_URL}/api/v1/asr",
+            files=files,
+            data=data,
+            timeout=SENSEVOICE_API_TIMEOUT
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            
+            # 記錄完整的 SenseVoice 回應（用於調試）
+            print(f"🔍 SenseVoice 完整回應: {json.dumps(result, ensure_ascii=False, indent=2)}")
+            
+            if result.get('result') and len(result['result']) > 0:
+                # 獲取識別結果
+                transcription = result['result'][0].get('clean_text', '').strip()
+                
+                # 添加後處理
+                transcription = post_process_transcription(transcription)
+                
+                if transcription and is_valid_transcription(transcription):
+                    print(f"✅ 語音識別成功: {transcription}")
+                    return transcription
+                else:
+                    print("🔇 未檢測到有效語音內容，返回 '.'")
+                    return "."
+            else:
+                print("🔇 語音識別結果為空，返回 '.'")
+                return "."
+        else:
+            print(f"❌ SenseVoice API 調用失敗: {response.status_code}")
+            return "."  # API 失敗也返回 "."，保持流程連續性
+            
+    except requests.exceptions.Timeout:
+        print("❌ SenseVoice API 調用超時")
+        return "."  # 超時也返回 "."
+    except Exception as e:
+        print(f"❌ SenseVoice API 調用錯誤: {e}")
+        return "."  # 任何錯誤都返回 "."
+
 async def call_asr_api(audio_data):
-    # 调用ASR完成语音识别
-    answer = "语音已收到，这里只是模仿，真正对话需要您自己设置ASR服务。"
-    return answer
+    """向後兼容的 ASR API 調用（現在使用 SenseVoice）"""
+    return await call_sensevoice_api(audio_data)
 
 @app.post("/eb_stream")    # 前端调用的path
 async def eb_stream(request: Request):
@@ -264,17 +374,57 @@ async def eb_stream(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ==================== STT API 端點 ====================
+
+@app.post("/stt/transcribe")
+async def transcribe_audio(file: UploadFile = File(...)):
+    """語音轉文字端點"""
+    try:
+        # 讀取上傳的音頻文件
+        audio_data = await file.read()
+        
+        # 調用 SenseVoice API
+        transcription = await call_sensevoice_api(audio_data)
+        
+        return {
+            "success": True,
+            "transcription": transcription,
+            "filename": file.filename
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"STT 處理失敗: {str(e)}")
+
+# 注意：/voice_chat 端點已移除，現在語音對話流程為：
+# 1. 前端調用 /stt/transcribe 進行語音轉文字
+# 2. 前端獲得文字後，直接復用 /eb_stream 進行文字對話
+# 這樣確保語音對話與純文字對話使用完全相同的處理流程
+
 # ==================== 健康檢查和狀態 ====================
 
 @app.get("/health")
 async def health_check():
     """健康檢查端點"""
     providers = dual_tts_manager.get_available_providers()
+    
+    # 檢查 SenseVoice 服務狀態
+    sensevoice_status = "unknown"
+    try:
+        response = requests.get(f"{SENSEVOICE_API_URL}/", timeout=5)
+        sensevoice_status = "available" if response.status_code == 200 else "unavailable"
+    except:
+        sensevoice_status = "unavailable"
+    
     return {
         "status": "healthy",
         "tts_engines": providers,
         "total_engines": len(providers),
-        "available_engines": len([p for p in providers if p["status"] == "available"])
+        "available_engines": len([p for p in providers if p["status"] == "available"]),
+        "stt_service": {
+            "name": "SenseVoice",
+            "status": sensevoice_status,
+            "url": SENSEVOICE_API_URL
+        }
     }
 
 @app.get("/")

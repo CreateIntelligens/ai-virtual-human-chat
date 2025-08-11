@@ -56,6 +56,11 @@ indextts-service/config/audio_samples/*.mp3
 indextts-service/config/audio_samples/*.wav
 !indextts-service/config/audio_samples/README.md
 
+# SenseVoice 模型文件 (保留目錄結構，忽略模型內容)
+sensevoice-service/models/*
+!sensevoice-service/models/.gitkeep
+!sensevoice-service/models/README.md
+
 # ===========================================
 # 測試和臨時文件
 # ===========================================
@@ -75,6 +80,15 @@ test_*.mp3
 # 臨時文件
 *.tmp
 *.temp
+
+# 依賴鎖定文件
+*.lock
+package-lock.json
+yarn.lock
+poetry.lock
+Pipfile.lock
+composer.lock
+Gemfile.lock
 
 # ===========================================
 # Python 相關

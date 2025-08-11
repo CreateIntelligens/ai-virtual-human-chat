@@ -126,6 +126,116 @@
             position: relative;
         }
 
+        /* 語音錄音按鈕樣式 */
+        #voiceButton {
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 50px;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #voiceButton:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        #voiceButton:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        #voiceButton.recording {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            animation: pulse 1.5s infinite;
+        }
+
+        #voiceButton.processing {
+            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 錄音狀態指示器 */
+        .recording-indicator {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            z-index: 1000;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .recording-indicator.show {
+            display: block;
+            animation: fadeInScale 0.3s ease;
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .recording-wave {
+            display: flex;
+            gap: 3px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .recording-wave span {
+            width: 4px;
+            height: 20px;
+            background: #28a745;
+            border-radius: 2px;
+            animation: wave 1.2s infinite ease-in-out;
+        }
+
+        .recording-wave span:nth-child(1) { animation-delay: -1.1s; }
+        .recording-wave span:nth-child(2) { animation-delay: -1.0s; }
+        .recording-wave span:nth-child(3) { animation-delay: -0.9s; }
+        .recording-wave span:nth-child(4) { animation-delay: -0.8s; }
+        .recording-wave span:nth-child(5) { animation-delay: -0.7s; }
+
+        @keyframes wave {
+            0%, 40%, 100% { transform: scaleY(0.4); }
+            20% { transform: scaleY(1.0); }
+        }
+
         #messageInput {
             width: 100%;
             padding: 15px 20px;
@@ -225,7 +335,7 @@
         }
 
         .message.ai .message-avatar {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
 
         .message-time {
@@ -707,10 +817,13 @@
             <!-- 輸入區域 -->
             <div class="chat-input-area">
                 <div class="input-container">
+                    <button id="voiceButton" onclick="toggleVoiceRecording()" title="語音輸入">
+                        🎤
+                    </button>
                     <div class="input-wrapper">
                         <textarea 
                             id="messageInput" 
-                            placeholder="請輸入您的問題..." 
+                            placeholder="請輸入您的問題或點擊麥克風說話..." 
                             rows="1"
                         ></textarea>
                     </div>
@@ -719,6 +832,23 @@
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- 錄音狀態指示器 -->
+    <div class="recording-indicator" id="recordingIndicator">
+        <div>🎤 正在錄音中...</div>
+        <div class="recording-wave">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <div style="margin-top: 10px; font-size: 12px; opacity: 0.8;">
+            點擊停止錄音
+        </div>
+    </div>
         </div>
     </div>
 
@@ -746,6 +876,30 @@
         // 雙引擎 TTS 管理
         let availableEngines = {};
         let engineVoices = {};
+
+        // 語音錄音相關變數
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let recordingStream = null;
+
+        // VAD (Voice Activity Detection) 相關變數
+        let analyser = null;
+        let microphone = null;
+        let vadInterval = null;
+        let silenceTimer = null;
+        let isDetectingSpeech = false;
+        let hasDetectedSpeech = false;
+        let recordingStartTime = 0;
+
+        // VAD 配置參數
+        const VAD_CONFIG = {
+            VOICE_THRESHOLD: 25,        // 語音檢測閾值 (0-255)
+            SILENCE_DURATION: 1500,     // 靜音持續時間 (毫秒)
+            MIN_RECORDING_TIME: 500,    // 最小錄音時間 (毫秒)
+            MAX_RECORDING_TIME: 30000,  // 最大錄音時間 (毫秒)
+            ANALYSIS_INTERVAL: 100      // 分析間隔 (毫秒)
+        };
 
         // 載入 TTS 引擎狀態
         async function loadTTSEngines() {
@@ -1469,6 +1623,647 @@
                 });
             }
         });
+
+        // ==================== VAD (Voice Activity Detection) 功能 ====================
+
+        // 初始化 VAD 音頻分析器
+        async function initVAD(stream) {
+            try {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+
+                // 創建音頻分析器
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                analyser.smoothingTimeConstant = 0.8;
+
+                // 連接麥克風到分析器
+                microphone = audioContext.createMediaStreamSource(stream);
+                microphone.connect(analyser);
+
+                console.log('✅ VAD 音頻分析器初始化完成');
+                return true;
+            } catch (error) {
+                console.error('❌ VAD 初始化失敗:', error);
+                return false;
+            }
+        }
+
+        // 檢測語音活動
+        function detectVoiceActivity() {
+            if (!analyser) return { volume: 0, isSpeaking: false };
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            
+            analyser.getByteFrequencyData(dataArray);
+            
+            // 計算平均音量
+            const average = dataArray.reduce((a, b) => a + b) / bufferLength;
+            
+            // 判斷是否為語音
+            const isSpeaking = average > VAD_CONFIG.VOICE_THRESHOLD;
+            
+            return { volume: average, isSpeaking };
+        }
+
+        // 處理語音活動檢測結果
+        function handleVoiceActivity(activity) {
+            const currentTime = Date.now();
+            
+            if (activity.isSpeaking) {
+                // 檢測到語音
+                if (!hasDetectedSpeech) {
+                    hasDetectedSpeech = true;
+                    console.log(`🗣️ 檢測到語音開始 (音量: ${activity.volume.toFixed(1)})`);
+                    updateRecordingIndicatorText('🗣️ 檢測到語音...');
+                }
+                
+                // 清除靜音計時器
+                if (silenceTimer) {
+                    clearTimeout(silenceTimer);
+                    silenceTimer = null;
+                }
+                
+                isDetectingSpeech = true;
+            } else if (isDetectingSpeech && hasDetectedSpeech) {
+                // 開始靜音計時
+                if (!silenceTimer) {
+                    console.log(`🤫 開始靜音檢測 (音量: ${activity.volume.toFixed(1)})`);
+                    updateRecordingIndicatorText('⏸️ 靜音中，即將自動停止...');
+                    
+                    silenceTimer = setTimeout(() => {
+                        const recordingDuration = currentTime - recordingStartTime;
+                        
+                        // 檢查最小錄音時間
+                        if (recordingDuration >= VAD_CONFIG.MIN_RECORDING_TIME) {
+                            console.log(`🎯 自動停止錄音 (靜音 ${VAD_CONFIG.SILENCE_DURATION}ms)`);
+                            autoStopRecording();
+                        } else {
+                            console.log(`⏰ 錄音時間太短 (${recordingDuration}ms)，繼續等待...`);
+                            // 重置狀態，繼續錄音
+                            silenceTimer = null;
+                            isDetectingSpeech = false;
+                        }
+                    }, VAD_CONFIG.SILENCE_DURATION);
+                }
+            }
+        }
+
+        // 自動停止錄音
+        async function autoStopRecording() {
+            console.log('🤖 VAD 自動停止錄音');
+            
+            // 清理 VAD
+            stopVAD();
+            
+            // 停止錄音
+            await stopRecording();
+        }
+
+        // 開始 VAD 監控
+        function startVAD() {
+            if (vadInterval) {
+                clearInterval(vadInterval);
+            }
+            
+            recordingStartTime = Date.now();
+            hasDetectedSpeech = false;
+            isDetectingSpeech = false;
+            
+            vadInterval = setInterval(() => {
+                const activity = detectVoiceActivity();
+                handleVoiceActivity(activity);
+                
+                // 檢查最大錄音時間
+                const recordingDuration = Date.now() - recordingStartTime;
+                if (recordingDuration >= VAD_CONFIG.MAX_RECORDING_TIME) {
+                    console.log(`⏰ 達到最大錄音時間 (${VAD_CONFIG.MAX_RECORDING_TIME}ms)，自動停止`);
+                    autoStopRecording();
+                }
+            }, VAD_CONFIG.ANALYSIS_INTERVAL);
+            
+            console.log('🎯 VAD 監控已開始');
+        }
+
+        // 停止 VAD 監控
+        function stopVAD() {
+            if (vadInterval) {
+                clearInterval(vadInterval);
+                vadInterval = null;
+            }
+            
+            if (silenceTimer) {
+                clearTimeout(silenceTimer);
+                silenceTimer = null;
+            }
+            
+            if (microphone) {
+                microphone.disconnect();
+                microphone = null;
+            }
+            
+            if (analyser) {
+                analyser = null;
+            }
+            
+            isDetectingSpeech = false;
+            hasDetectedSpeech = false;
+            
+            console.log('🛑 VAD 監控已停止');
+        }
+
+        // 更新錄音指示器文字
+        function updateRecordingIndicatorText(text) {
+            const indicator = document.getElementById('recordingIndicator');
+            const textDiv = indicator.querySelector('div:first-child');
+            if (textDiv) {
+                textDiv.textContent = text;
+            }
+        }
+
+        // ==================== 語音錄音功能 ====================
+
+        // 請求麥克風權限
+        async function requestMicrophonePermission() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        sampleRate: 16000,  // SenseVoice 推薦的採樣率
+                        channelCount: 1,    // 單聲道
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    } 
+                });
+                console.log('✅ 麥克風權限已獲取');
+                return stream;
+            } catch (error) {
+                console.error('❌ 麥克風權限被拒絕:', error);
+                addStatusIndicator('❌ 無法訪問麥克風，請檢查瀏覽器權限設置', 'error');
+                return null;
+            }
+        }
+
+        // SenseVoice 文字後處理
+        function post_process_transcription(text) {
+            if (!text) {
+                return text;
+            }
+            
+            // 如果整個文字只是一個中文句號，改為英文點號
+            if (text.trim() === "。") {
+                console.log(`📝 純句號轉換: '。' -> '.'`);
+                return ".";
+            }
+            
+            // 如果文字以中文句號結尾，移除它
+            if (text.endsWith("。")) {
+                const processed_text = text.slice(0, -1);
+                console.log(`📝 移除結尾句號: '${text}' -> '${processed_text}'`);
+                return processed_text;
+            }
+            
+            return text;
+        }
+
+        // 開始錄音（整合 VAD）
+        async function startRecording() {
+            try {
+                console.log('🎤 開始智能錄音 (VAD)...');
+                
+                // 獲取麥克風權限
+                recordingStream = await requestMicrophonePermission();
+                if (!recordingStream) {
+                    return false;
+                }
+
+                // 初始化 VAD 音頻分析器
+                const vadInitialized = await initVAD(recordingStream);
+                if (!vadInitialized) {
+                    console.warn('⚠️ VAD 初始化失敗，使用手動錄音模式');
+                }
+
+                // 初始化 MediaRecorder
+                const options = {
+                    mimeType: 'audio/webm;codecs=opus'
+                };
+                
+                // 檢查瀏覽器支援的格式
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options.mimeType = 'audio/webm';
+                    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                        options.mimeType = 'audio/mp4';
+                        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                            options.mimeType = '';
+                        }
+                    }
+                }
+
+                mediaRecorder = new MediaRecorder(recordingStream, options);
+                audioChunks = [];
+
+                // 錄音數據處理
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+
+                // 錄音結束處理
+                mediaRecorder.onstop = async () => {
+                    console.log('🎤 錄音結束，處理音頻數據...');
+                    // 停止 VAD 監控
+                    stopVAD();
+                    await processRecordedAudio();
+                };
+
+                // 開始錄音
+                mediaRecorder.start();
+                isRecording = true;
+
+                // 開始 VAD 監控（如果初始化成功）
+                if (vadInitialized) {
+                    startVAD();
+                    updateRecordingIndicatorText('🎤 等待語音...');
+                    console.log('🎯 智能語音檢測已啟動');
+                } else {
+                    updateRecordingIndicatorText('🎤 正在錄音中...');
+                }
+
+                // 更新 UI
+                updateRecordingUI(true);
+                showRecordingIndicator();
+
+                console.log('✅ 智能錄音已開始');
+                return true;
+
+            } catch (error) {
+                console.error('❌ 開始錄音失敗:', error);
+                addStatusIndicator(`❌ 錄音失敗: ${error.message}`, 'error');
+                // 清理 VAD
+                stopVAD();
+                return false;
+            }
+        }
+
+        // 停止錄音
+        async function stopRecording() {
+            try {
+                console.log('🛑 停止錄音...');
+
+                // 停止 VAD 監控
+                stopVAD();
+
+                if (mediaRecorder && mediaRecorder.state === 'recording') {
+                    mediaRecorder.stop();
+                }
+
+                if (recordingStream) {
+                    recordingStream.getTracks().forEach(track => track.stop());
+                    recordingStream = null;
+                }
+
+                isRecording = false;
+
+                // 更新 UI
+                updateRecordingUI(false);
+                hideRecordingIndicator();
+
+                console.log('✅ 錄音已停止');
+
+            } catch (error) {
+                console.error('❌ 停止錄音失敗:', error);
+                addStatusIndicator(`❌ 停止錄音失敗: ${error.message}`, 'error');
+                // 確保 VAD 被清理
+                stopVAD();
+            }
+        }
+
+        // 處理錄音數據
+        async function processRecordedAudio() {
+            try {
+                if (audioChunks.length === 0) {
+                    addStatusIndicator('⚠️ 沒有錄製到音頻數據', 'error');
+                    return;
+                }
+
+                console.log('🔄 正在處理音頻數據...');
+                
+                // 更新按鈕狀態為處理中
+                const voiceButton = document.getElementById('voiceButton');
+                voiceButton.className = 'processing';
+                voiceButton.innerHTML = '⏳';
+                voiceButton.disabled = true;
+
+                // 合併音頻數據
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                console.log(`📊 音頻數據大小: ${(audioBlob.size / 1024).toFixed(2)} KB`);
+
+                // 發送到 STT 服務
+                await sendAudioToSTT(audioBlob);
+
+            } catch (error) {
+                console.error('❌ 處理音頻失敗:', error);
+                addStatusIndicator(`❌ 音頻處理失敗: ${error.message}`, 'error');
+            } finally {
+                // 恢復按鈕狀態
+                const voiceButton = document.getElementById('voiceButton');
+                voiceButton.className = '';
+                voiceButton.innerHTML = '🎤';
+                voiceButton.disabled = false;
+            }
+        }
+
+        // 發送音頻到 STT 服務
+        async function sendAudioToSTT(audioFile) {
+            try {
+                console.log('🎤 發送音頻到 STT 服務...');
+                
+                // 顯示處理狀態
+                addStatusIndicator('🎤 正在識別語音，請稍候...', 'info');
+
+                // 準備 FormData
+                const formData = new FormData();
+                formData.append('file', audioFile, 'recording.webm');
+
+                // 1. 先調用純 STT API 獲取文字
+                const sttResponse = await fetch('/stt/transcribe', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!sttResponse.ok) {
+                    throw new Error(`STT API 錯誤: ${sttResponse.status}`);
+                }
+
+                const sttResult = await sttResponse.json();
+                
+                // 在前端 console 顯示 SenseVoice 的完整回應
+                console.log('🔍 SenseVoice API 完整回應:', sttResult);
+                
+                let transcribedText = sttResult.transcription;
+                
+                // 添加後處理
+                transcribedText = post_process_transcription(transcribedText);
+                
+                console.log(`✅ 語音識別結果: "${transcribedText}"`);
+
+                // 清理 STT 狀態指示器
+                const statusIndicators = document.querySelectorAll('.status-indicator');
+                statusIndicators.forEach(indicator => {
+                    if (indicator.textContent.includes('正在識別語音')) {
+                        indicator.remove();
+                    }
+                });
+
+                // 2. 顯示用戶的語音識別結果
+                addMessage(transcribedText, true);
+
+                // 3. 調用核心文字對話處理函數
+                await processTextMessage(transcribedText, true);
+
+            } catch (error) {
+                console.error('❌ STT 處理失敗:', error);
+                addStatusIndicator(`❌ 語音識別失敗: ${error.message}`, 'error');
+                
+                // 清理狀態指示器
+                const statusIndicators = document.querySelectorAll('.status-indicator');
+                statusIndicators.forEach(indicator => {
+                    if (indicator.textContent.includes('正在識別語音')) {
+                        indicator.remove();
+                    }
+                });
+            }
+        }
+
+        // 核心文字對話處理函數
+        async function processTextMessage(text, isFromVoice = false) {
+            const sendButton = document.getElementById('sendButton');
+            const voiceDropdown = document.getElementById('voiceDropdown');
+
+            // 初始化音頻上下文
+            initAudioContext();
+            
+            // 準備狀態
+            sendButton.disabled = true;
+            isChatting = true;
+            isEnding = false;
+            buffer = "";
+            audioQueue = [];
+            controller = new AbortController();
+
+            // 如果不是來自語音輸入，則添加用戶訊息（語音輸入已經在 STT 階段添加了）
+            if (!isFromVoice) {
+                addMessage(text, true);
+            }
+            
+            // 顯示等待動畫
+            showTypingIndicator();
+            showAvatarWaitingAnimation();
+
+            // 獲取當前選擇的引擎（自動選擇）
+            const provider = getCurrentProvider();
+            console.log(`🎯 用戶選擇聲音: ${voiceDropdown.value}`);
+            if (provider) {
+                console.log(`🤖 自動選擇引擎: ${provider}`);
+            } else {
+                console.log('🤖 使用系統自動選擇引擎');
+            }
+
+            try {
+                const response = await fetch(`${window.location.protocol}//${window.location.host}/eb_stream`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        "input_mode": "text",
+                        "prompt": text,
+                        "voice_id": voiceDropdown.value,
+                        "voice_speed": "",
+                        "provider": provider  // 添加引擎選擇參數
+                    }),
+                    signal: controller.signal
+                });
+
+                if (!response.ok) {
+                    throw new Error('API呼叫失敗');
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullText = '';
+                let currentMessageDiv = null;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                        isEnding = true;
+                        break;
+                    }
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    buffer += chunk;
+
+                    const chunks = buffer.split("\n");
+                    for (let i = 0; i < chunks.length - 1; i++) {
+                        try {
+                            const data = JSON.parse(chunks[i]);
+                            
+                            if (data.text) {
+                                // 隱藏打字指示器並顯示實際回應
+                                if (!currentMessageDiv) {
+                                    hideTypingIndicator();
+                                    addMessage('', false);
+                                    const messages = document.querySelectorAll('.message.ai');
+                                    currentMessageDiv = messages[messages.length - 1].querySelector('.message-content');
+                                }
+                                
+                                fullText += data.text;
+                                // 更新訊息內容（保留時間戳）
+                                const timeDiv = currentMessageDiv.querySelector('.message-time');
+                                const timeHtml = timeDiv ? timeDiv.outerHTML : '';
+                                currentMessageDiv.innerHTML = fullText + timeHtml;
+                                
+                                // 滾動到底部
+                                const chatMessages = document.getElementById('chatMessages');
+                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                            }
+
+                            if (data.audio) {
+                                // 隱藏等待動畫（第一次收到音頻時）
+                                hideAvatarWaitingAnimation();
+                                
+                                // 記錄語音合成成功
+                                if (provider) {
+                                    console.log(`🎵 語音合成成功: ${availableEngines[provider]?.name || provider}`);
+                                } else {
+                                    console.log('🎵 語音合成成功: 系統自動選擇');
+                                }
+                                
+                                // 解碼Base64音頻數據
+                                const binaryString = atob(data.audio);
+                                const audioUint8Array = new Uint8Array(binaryString.length);
+                                for (let j = 0; j < binaryString.length; j++) {
+                                    audioUint8Array[j] = binaryString.charCodeAt(j);
+                                }
+                                audioQueue.push(audioUint8Array);
+                                
+                                // 開始播放音頻
+                                if (!isPlaying) {
+                                    playAudio();
+                                }
+                            }
+
+                            if (data.endpoint) {
+                                isEnding = true;
+                                hideAvatarWaitingAnimation(); // 確保等待動畫被隱藏
+                            }
+                        } catch (e) {
+                            console.error('解析JSON失敗:', e);
+                        }
+                    }
+                    buffer = chunks[chunks.length - 1];
+                }
+                
+            } catch (error) {
+                hideTypingIndicator();
+                hideAvatarWaitingAnimation();
+                addStatusIndicator(`❌ TTS 引擎錯誤: ${error.message}`, 'error');
+                sendButton.disabled = false;
+                isChatting = false;
+                console.error('❌ TTS 處理失敗:', error);
+            }
+        }
+
+        // 切換錄音狀態
+        async function toggleVoiceRecording() {
+            console.log(`🎤 切換錄音狀態 - 當前狀態: isChatting=${isChatting}, isRecording=${isRecording}`);
+            
+            // 如果正在對話中，強制重置狀態
+            if (isChatting) {
+                console.log('⚠️ 檢測到對話狀態卡住，強制重置...');
+                resetChatState();
+                // 給一點時間讓狀態重置完成
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            if (isRecording) {
+                await stopRecording();
+            } else {
+                await startRecording();
+            }
+        }
+
+        // 重置聊天狀態
+        function resetChatState() {
+            console.log('🔄 重置聊天狀態...');
+            isChatting = false;
+            isPlaying = false;
+            isEnding = false;
+            audioQueue = [];
+            
+            // 重置按鈕狀態
+            const sendButton = document.getElementById('sendButton');
+            const voiceButton = document.getElementById('voiceButton');
+            
+            if (sendButton) {
+                sendButton.disabled = false;
+            }
+            
+            if (voiceButton) {
+                voiceButton.disabled = false;
+                voiceButton.className = '';
+                voiceButton.innerHTML = '🎤';
+                voiceButton.title = '語音輸入';
+            }
+            
+            // 清理可能卡住的指示器
+            hideTypingIndicator();
+            hideAvatarWaitingAnimation();
+            hideRecordingIndicator();
+            
+            // 清理狀態指示器
+            const statusIndicators = document.querySelectorAll('.status-indicator');
+            statusIndicators.forEach(indicator => {
+                if (indicator.textContent.includes('正在識別語音') || 
+                    indicator.textContent.includes('請等待當前對話完成')) {
+                    indicator.remove();
+                }
+            });
+            
+            console.log('✅ 聊天狀態已重置');
+        }
+
+        // 更新錄音 UI 狀態
+        function updateRecordingUI(recording) {
+            const voiceButton = document.getElementById('voiceButton');
+            
+            if (recording) {
+                voiceButton.className = 'recording';
+                voiceButton.innerHTML = '🛑';
+                voiceButton.title = '點擊停止錄音';
+            } else {
+                voiceButton.className = '';
+                voiceButton.innerHTML = '🎤';
+                voiceButton.title = '語音輸入';
+            }
+        }
+
+        // 顯示錄音指示器
+        function showRecordingIndicator() {
+            const indicator = document.getElementById('recordingIndicator');
+            indicator.classList.add('show');
+        }
+
+        // 隱藏錄音指示器
+        function hideRecordingIndicator() {
+            const indicator = document.getElementById('recordingIndicator');
+            indicator.classList.remove('show');
+        }
     </script>
 </body>
 </html>
