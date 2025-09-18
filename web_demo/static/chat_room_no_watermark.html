@@ -991,10 +991,22 @@
                 ];
             }
             
-            // 對每個引擎內的聲音按名稱排序
-            edgeTTSVoices.sort((a, b) => a.text.localeCompare(b.text));
-            cosyVoiceVoices.sort((a, b) => a.text.localeCompare(b.text));
-            indexTTSVoices.sort((a, b) => a.text.localeCompare(b.text));
+            // 對每個引擎內的聲音按名稱排序（安全排序，處理undefined）
+            edgeTTSVoices.sort((a, b) => {
+                const textA = a.text || a.value || '';
+                const textB = b.text || b.value || '';
+                return textA.localeCompare(textB);
+            });
+            cosyVoiceVoices.sort((a, b) => {
+                const textA = a.text || a.value || '';
+                const textB = b.text || b.value || '';
+                return textA.localeCompare(textB);
+            });
+            indexTTSVoices.sort((a, b) => {
+                const textA = a.text || a.value || '';
+                const textB = b.text || b.value || '';
+                return textA.localeCompare(textB);
+            });
             
             // 先添加 EdgeTTS 聲音（快速）
             if (edgeTTSVoices.length > 0) {

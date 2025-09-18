@@ -199,7 +199,13 @@ class BigVGAN(torch.nn.Module):
         # self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
 
     def forward(self, x, mel_ref, lens=None):
-        speaker_embedding = self.speaker_encoder(mel_ref, lens)
+        speaker_embedding = []
+        for mel_ref_ in mel_ref:
+            speaker_embedding_ = self.speaker_encoder(mel_ref_, lens)
+            speaker_embedding.append(speaker_embedding_)
+        speaker_embedding = torch.stack(speaker_embedding).sum(dim=0)
+        speaker_embedding = speaker_embedding / len(mel_ref)
+        
         n_batch = x.size(0)
         contrastive_loss = None
         if n_batch * 2 == speaker_embedding.size(0):

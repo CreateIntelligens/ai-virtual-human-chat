@@ -1,32 +1,35 @@
 version: '3.8'
 
 services:
-  indextts-api:
+  index-tts:
     build: .
-    container_name: indextts-api
-    ports:
-      - "6008:6008"
-    volumes:
-      # 掛載整個專案目錄，支援開發時即時更新
-      - .:/app
-      # 持久化模型檔案
-      - ./checkpoints:/app/checkpoints
-      # 持久化輸出檔案
-      - ./outputs:/app/outputs
+    image: index-tts-server
+    env_file:
+      - .env.example
+    container_name: index-tts-server
     environment:
-      - PYTHONPATH=/app
-      - PYTHONUNBUFFERED=1
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6008/docs"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+      - CUDA_LAUNCH_BLOCKING=1
+      - TORCH_CUDA_ARCH_LIST=8.9
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    ports:
+      - "${PORT:-8001}:${PORT:-8001}"
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
+              count: all
               capabilities: [gpu]
+    volumes:
+      - ./audio_prompts:/app/audio_prompts
+      - ./assets:/app/assets
+      - ./checkpoints:/app/checkpoints
+      - ./logs:/app/logs  # 添加logs目錄mapping
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-8001}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

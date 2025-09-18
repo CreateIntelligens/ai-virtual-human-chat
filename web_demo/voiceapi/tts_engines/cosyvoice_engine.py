@@ -22,12 +22,15 @@ class CosyVoiceEngine(BaseTTSEngine):
     async def initialize(self) -> bool:
         """初始化 CosyVoice 引擎"""
         try:
-            # 從配置文件獲取 API 地址
-            api_config = self.config.get('api_config', {})
+            # 從配置文件獲取 API 地址 - 修正配置路徑
+            provider_info = self.config.get('provider_info', {})
+            api_config = provider_info.get('api_config', {})
             self.api_base_url = api_config.get('base_url', 'http://cosyvoice-service:50001')
             
             # 也支援環境變數覆蓋
             self.api_base_url = os.getenv('COSYVOICE_API_URL', self.api_base_url)
+            
+            print(f"🔧 CosyVoice API URL: {self.api_base_url}")
             
             # 創建 HTTP 會話
             self.session = aiohttp.ClientSession()

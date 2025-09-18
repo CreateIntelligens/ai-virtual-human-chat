@@ -36,25 +36,23 @@ cosyvoice-service/config/audio_samples/*.wav
 !cosyvoice-service/config/audio_samples/README.md
 
 # IndexTTS 模型文件 (自動下載，不需要版本控制)
-indextts-service/checkpoints/*.pth
-indextts-service/checkpoints/*.model
-indextts-service/checkpoints/*.vocab
-indextts-service/checkpoints/.cache/
+indextts-service/checkpoints/*
 !indextts-service/checkpoints/.gitkeep
-!indextts-service/checkpoints/config.yaml
+!indextts-service/checkpoints/README.md
 
 # IndexTTS 輸出文件
 indextts-service/outputs/
 indextts-service/temp_prompt_*.wav
 
-# IndexTTS 配置文件 (用戶自定義)
-indextts-service/config/voices.json
-!indextts-service/config/voices.sample.json
+# IndexTTS 日誌文件
+indextts-service/logs/*.log
+!indextts-service/logs/.gitkeep
 
-# IndexTTS 音頻樣本文件
-indextts-service/config/audio_samples/*.mp3
-indextts-service/config/audio_samples/*.wav
-!indextts-service/config/audio_samples/README.md
+# IndexTTS 音頻樣本文件 (保留配置文件結構)
+indextts-service/assets/voices/*/
+indextts-service/assets/voices.json
+!indextts-service/assets/voices.sample.json
+!indextts-service/assets/README.md
 
 # SenseVoice 模型文件 (保留目錄結構，忽略模型內容)
 sensevoice-service/models/*

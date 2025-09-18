@@ -63,31 +63,34 @@ services:
     build: ./indextts-service
     container_name: indextts-service
     ports:
-      - "6008:6008"
+      - "8001:8001"
     volumes:
-      - ./indextts-service:/app
-      - ./indextts-service/config:/app/config
-      - ./indextts-service/checkpoints:/app/checkpoints  # 模型持久化存儲
-      - ./indextts-service/outputs:/app/outputs
+      - ./indextts-service/audio_prompts:/app/audio_prompts
+      - ./indextts-service/assets:/app/assets
+      - ./indextts-service/checkpoints:/app/checkpoints
+      - ./indextts-service/logs:/app/logs
     environment:
-      - PYTHONPATH=/app
-      - PYTHONUNBUFFERED=1
+      - MODEL=IndexTeam/IndexTTS-1.5
+      - VLLM_USE_MODELSCOPE=1
+      - DOWNLOAD_MODEL=1
+      - CONVERT_MODEL=1
+      - MODEL_DIR=checkpoints
+      - PORT=8001
+      - GPU_MEMORY_UTILIZATION=0.1
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
+              count: all
               capabilities: [gpu]
     restart: always
-    working_dir: /app
-    command: python api.py --port 6008 --host 0.0.0.0 --model_dir checkpoints
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6008/docs"]
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
       timeout: 10s
-      retries: 5
-      start_period: 120s  # 增加啟動時間，因為可能需要下載模型
+      retries: 3
+      start_period: 1800s  # VLLM 需要更長的啟動時間
 
   sensevoice-service:
     build: ./sensevoice-service

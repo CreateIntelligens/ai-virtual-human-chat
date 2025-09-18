@@ -1,0 +1,12 @@
+{
+  "voices": [
+    {
+      "id": "custom_voice_example",
+      "name": "自定義聲音範例",
+      "character": "custom",
+      "audio_paths": ["/app/assets/voices/custom/my_reference.wav"],
+      "description": "這是一個自定義聲音的範例配置",
+      "seed": 10
+    }
+  ]
+}

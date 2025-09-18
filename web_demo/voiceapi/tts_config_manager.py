@@ -67,7 +67,7 @@ class TTSConfigManager:
     def _load_indextts_config(self):
         """載入 IndexTTS 服務配置"""
         try:
-            indextts_config_path = "indextts-service/config/voices.json"
+            indextts_config_path = "indextts-service/assets/voices.json"
             if os.path.exists(indextts_config_path):
                 with open(indextts_config_path, 'r', encoding='utf-8') as f:
                     indextts_raw = json.load(f)
@@ -207,7 +207,7 @@ class TTSConfigManager:
                 "default_voice": recommended[0] if recommended else "",
                 "fallback_voice": recommended[0] if recommended else "",
                 "api_config": {
-                    "base_url": "http://indextts-service:6008",
+                    "base_url": "http://indextts-service:8001",
                     "timeout": 180,
                     "retry_attempts": 3,
                     "health_check_interval": 60
