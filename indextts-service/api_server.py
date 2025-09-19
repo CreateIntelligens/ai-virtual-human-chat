@@ -44,6 +44,26 @@ def load_custom_dict():
         print(f"載入詞庫時發生錯誤: {e}")
         custom_dict = {}
 
+def get_speaker_default_seed(speaker_name, fallback_seed=8):
+    """獲取 speaker 的預設 seed 值"""
+    try:
+        current_file_path = os.path.abspath(__file__)
+        cur_dir = os.path.dirname(current_file_path)
+        speaker_path = os.path.join(cur_dir, "assets/speaker.json")
+        
+        if os.path.exists(speaker_path):
+            with open(speaker_path, 'r', encoding='utf-8') as f:
+                speaker_dict = json.load(f)
+            
+            speaker_config = speaker_dict.get(speaker_name)
+            if speaker_config and isinstance(speaker_config, dict):
+                return speaker_config.get("default_seed", fallback_seed)
+        
+        return fallback_seed
+    except Exception as e:
+        print(f"獲取 speaker 預設 seed 時發生錯誤: {e}")
+        return fallback_seed
+
 def apply_custom_dict(text):
     """將文字根據自定義詞庫進行轉換"""
     if not custom_dict:
@@ -129,7 +149,15 @@ async def lifespan(app: FastAPI):
     if os.path.exists(speaker_path):
         speaker_dict = json.load(open(speaker_path, 'r'))
 
-        for speaker, audio_paths in speaker_dict.items():
+        for speaker, speaker_config in speaker_dict.items():
+            # 支援舊格式（直接是音頻路徑列表）和新格式（包含配置的字典）
+            if isinstance(speaker_config, list):
+                # 舊格式：直接是音頻路徑列表
+                audio_paths = speaker_config
+            else:
+                # 新格式：包含 audio_paths 和其他配置
+                audio_paths = speaker_config.get("audio_paths", [])
+            
             audio_paths_ = []
             for audio_path in audio_paths:
                 audio_paths_.append(os.path.join(cur_dir, audio_path))
@@ -225,12 +253,18 @@ async def tts_api(request: Request):
         data = await request.json()
         text = data["text"]
         character = data["character"]
+        
+        # 優先使用 API 請求中的 seed，否則使用 speaker 的預設 seed
+        if "seed" in data:
+            seed = data["seed"]
+        else:
+            seed = get_speaker_default_seed(character, fallback_seed=8)
 
         # 應用自定義詞庫轉換
         converted_text = apply_custom_dict(text)
 
         global tts
-        sr, wav = await tts.infer_with_ref_audio_embed(character, converted_text)
+        sr, wav = await tts.infer_with_ref_audio_embed(character, converted_text, seed=seed)
         with io.BytesIO() as wav_buffer:
             sf.write(wav_buffer, wav, sr, format='WAV')
             wav_bytes = wav_buffer.getvalue()
@@ -314,12 +348,18 @@ async def tts_api_openai(request: Request):
         character = data["voice"]
         #model param is omitted
         _model = data["model"]
+        
+        # 優先使用 API 請求中的 seed，否則使用 speaker 的預設 seed
+        if "seed" in data:
+            seed = data["seed"]
+        else:
+            seed = get_speaker_default_seed(character, fallback_seed=8)
 
         # 應用自定義詞庫轉換
         converted_text = apply_custom_dict(text)
 
         global tts
-        sr, wav = await tts.infer_with_ref_audio_embed(character, converted_text)
+        sr, wav = await tts.infer_with_ref_audio_embed(character, converted_text, seed=seed)
         with io.BytesIO() as wav_buffer:
             sf.write(wav_buffer, wav, sr, format='WAV')
             wav_bytes = wav_buffer.getvalue()

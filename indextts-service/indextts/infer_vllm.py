@@ -274,7 +274,7 @@ class IndexTTS:
             wav_data = trim_and_pad_silence(wav_data)
             return (sampling_rate, wav_data)
         
-    async def infer_with_ref_audio_embed(self, speaker: str, text):
+    async def infer_with_ref_audio_embed(self, speaker: str, text, seed=None):
         start_time = time.perf_counter()
         text = text.replace("嗯", "EN4")
         text = text.replace("嘿", "HEI1")
@@ -298,6 +298,12 @@ class IndexTTS:
 
             m_start_time = time.perf_counter()
             with torch.no_grad():
+                # 設置 seed 參數，如果提供的話
+                if seed is not None:
+                    self.gpt.sampling_params.seed = int(seed)
+                else:
+                    self.gpt.sampling_params.seed = None
+                    
                 codes, latent = await self.gpt.inference_speech(
                     speech_conditioning_latent,
                     text_tokens,

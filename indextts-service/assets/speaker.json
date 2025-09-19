@@ -1,0 +1,20 @@
+{
+    "hayley": {
+        "audio_paths": [
+            "assets/voices/hayley/Hayley正常說開場白.mp3"
+        ],
+        "default_seed": 2
+    },
+    "anchorman": {
+        "audio_paths": [
+            "assets/voices/anchorman/anchorman1_4_1070748_1426635.wav"
+        ],
+        "default_seed": 8
+    },
+    "cindy": {
+        "audio_paths": [
+            "assets/voices/cindy/Cindy_8_1361920_1537600.wav"
+        ],
+        "default_seed": 5
+    }
+}
