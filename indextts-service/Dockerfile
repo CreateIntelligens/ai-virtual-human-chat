@@ -34,6 +34,7 @@ COPY api_server.py /app/api_server.py
 COPY convert_hf_format.py /app/convert_hf_format.py
 COPY convert_hf_format.sh /app/convert_hf_format.sh
 COPY entrypoint.sh /app/entrypoint.sh
+COPY custom_dict.json /app/custom_dict.json
 
 RUN sed -i 's/\r$//' /app/entrypoint.sh /app/convert_hf_format.sh && \
     chmod +x /app/entrypoint.sh /app/convert_hf_format.sh

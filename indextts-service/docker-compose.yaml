@@ -27,6 +27,7 @@ services:
       - ./assets:/app/assets
       - ./checkpoints:/app/checkpoints
       - ./logs:/app/logs  # 添加logs目錄mapping
+      - ./custom_dict.json:/app/custom_dict.json
     restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${PORT:-8001}/health"]

@@ -22,6 +22,42 @@ import soundfile as sf
 
 from indextts.infer_vllm import IndexTTS
 
+# 全域詞庫變數
+custom_dict = {}
+
+def load_custom_dict():
+    """載入自定義詞庫"""
+    global custom_dict
+    try:
+        current_file_path = os.path.abspath(__file__)
+        cur_dir = os.path.dirname(current_file_path)
+        dict_path = os.path.join(cur_dir, "custom_dict.json")
+        
+        if os.path.exists(dict_path):
+            with open(dict_path, 'r', encoding='utf-8') as f:
+                custom_dict = json.load(f)
+            print(f"成功載入詞庫，共 {len(custom_dict)} 個詞條")
+        else:
+            print(f"詞庫檔案不存在: {dict_path}")
+            custom_dict = {}
+    except Exception as e:
+        print(f"載入詞庫時發生錯誤: {e}")
+        custom_dict = {}
+
+def apply_custom_dict(text):
+    """將文字根據自定義詞庫進行轉換"""
+    if not custom_dict:
+        return text
+    
+    converted_text = text
+    for original, replacement in custom_dict.items():
+        converted_text = converted_text.replace(original, replacement)
+    
+    if converted_text != text:
+        print(f"文字轉換: '{text}' -> '{converted_text}'")
+    
+    return converted_text
+
 def convert_audio_with_ffmpeg(input_data, text="", input_format='wav', output_format='wav', target_sample_rate=16000):
     """
     使用ffmpeg轉換音檔格式和採樣率，確保20ms幀長度
@@ -83,6 +119,9 @@ async def lifespan(app: FastAPI):
     global tts
     cfg_path = os.path.join(args.model_dir, "config.yaml")
     tts = IndexTTS(model_dir=args.model_dir, cfg_path=cfg_path, gpu_memory_utilization=args.gpu_memory_utilization)
+
+    # 載入自定義詞庫
+    load_custom_dict()
 
     current_file_path = os.path.abspath(__file__)
     cur_dir = os.path.dirname(current_file_path)
@@ -153,14 +192,17 @@ async def tts_api_url(request: Request):
         audio_paths = data["audio_paths"]
         seed = data.get("seed", 8)
 
+        # 應用自定義詞庫轉換
+        converted_text = apply_custom_dict(text)
+
         global tts
-        sr, wav = await tts.infer(audio_paths, text, seed=seed)
+        sr, wav = await tts.infer(audio_paths, converted_text, seed=seed)
         with io.BytesIO() as wav_buffer:
             sf.write(wav_buffer, wav, sr, format='WAV')
             wav_bytes = wav_buffer.getvalue()
         
         # 使用ffmpeg轉換為16kHz
-        wav_bytes_16k = convert_audio_with_ffmpeg(wav_bytes, text=text, target_sample_rate=16000)
+        wav_bytes_16k = convert_audio_with_ffmpeg(wav_bytes, text=converted_text, target_sample_rate=16000)
         return Response(content=wav_bytes_16k, media_type="audio/wav")
     
     except Exception as ex:
@@ -184,14 +226,17 @@ async def tts_api(request: Request):
         text = data["text"]
         character = data["character"]
 
+        # 應用自定義詞庫轉換
+        converted_text = apply_custom_dict(text)
+
         global tts
-        sr, wav = await tts.infer_with_ref_audio_embed(character, text)
+        sr, wav = await tts.infer_with_ref_audio_embed(character, converted_text)
         with io.BytesIO() as wav_buffer:
             sf.write(wav_buffer, wav, sr, format='WAV')
             wav_bytes = wav_buffer.getvalue()
         
         # 使用ffmpeg轉換為16kHz
-        wav_bytes_16k = convert_audio_with_ffmpeg(wav_bytes, text=text, target_sample_rate=16000)
+        wav_bytes_16k = convert_audio_with_ffmpeg(wav_bytes, text=converted_text, target_sample_rate=16000)
         return Response(content=wav_bytes_16k, media_type="audio/wav")
     
     except Exception as ex:
@@ -220,6 +265,42 @@ async def tts_voices():
         return []
 
 
+@app.post("/reload_dict")
+async def reload_custom_dict():
+    """重新載入自定義詞庫"""
+    try:
+        load_custom_dict()
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "success",
+                "message": f"詞庫重新載入成功，共 {len(custom_dict)} 個詞條",
+                "dict_count": len(custom_dict)
+            }
+        )
+    except Exception as ex:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "error": str(ex)
+            }
+        )
+
+
+@app.get("/dict_status")
+async def get_dict_status():
+    """獲取當前詞庫狀態"""
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "success",
+            "dict_count": len(custom_dict),
+            "dictionary": custom_dict
+        }
+    )
+
+
 
 @app.post("/audio/speech", responses={
     200: {"content": {"application/octet-stream": {}}},
@@ -234,14 +315,17 @@ async def tts_api_openai(request: Request):
         #model param is omitted
         _model = data["model"]
 
+        # 應用自定義詞庫轉換
+        converted_text = apply_custom_dict(text)
+
         global tts
-        sr, wav = await tts.infer_with_ref_audio_embed(character, text)
+        sr, wav = await tts.infer_with_ref_audio_embed(character, converted_text)
         with io.BytesIO() as wav_buffer:
             sf.write(wav_buffer, wav, sr, format='WAV')
             wav_bytes = wav_buffer.getvalue()
         
         # 使用ffmpeg轉換為16kHz
-        wav_bytes_16k = convert_audio_with_ffmpeg(wav_bytes, text=text, target_sample_rate=16000)
+        wav_bytes_16k = convert_audio_with_ffmpeg(wav_bytes, text=converted_text, target_sample_rate=16000)
         return Response(content=wav_bytes_16k, media_type="audio/wav")
     
     except Exception as ex:
@@ -267,6 +351,9 @@ async def tts_api_upload(
 ):
     """使用上傳的音檔進行 TTS 合成"""
     try:
+        # 應用自定義詞庫轉換
+        converted_text = apply_custom_dict(text)
+        
         # 創建臨時目錄保存上傳的音檔
         temp_dir = "/tmp/audio_uploads"
         os.makedirs(temp_dir, exist_ok=True)
@@ -282,7 +369,7 @@ async def tts_api_upload(
             buffer.write(content)
         
         global tts
-        sr, wav = await tts.infer([temp_filepath], text, seed=seed)
+        sr, wav = await tts.infer([temp_filepath], converted_text, seed=seed)
         
         # 清理臨時文件
         try:
@@ -295,7 +382,7 @@ async def tts_api_upload(
             wav_bytes = wav_buffer.getvalue()
         
         # 使用ffmpeg轉換為16kHz
-        wav_bytes_16k = convert_audio_with_ffmpeg(wav_bytes, text=text, target_sample_rate=16000)
+        wav_bytes_16k = convert_audio_with_ffmpeg(wav_bytes, text=converted_text, target_sample_rate=16000)
         return Response(content=wav_bytes_16k, media_type="audio/wav")
     
     except Exception as ex:
