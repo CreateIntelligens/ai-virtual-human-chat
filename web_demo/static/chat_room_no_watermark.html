@@ -1002,28 +1002,25 @@
                 const textB = b.text || b.value || '';
                 return textA.localeCompare(textB);
             });
-            indexTTSVoices.sort((a, b) => {
-                const textA = a.text || a.value || '';
-                const textB = b.text || b.value || '';
-                return textA.localeCompare(textB);
-            });
+            // IndexTTS 聲音保持 API 返回的原始順序（由 voices.json 檔案決定）
             
-            // 先添加 EdgeTTS 聲音（快速）
-            if (edgeTTSVoices.length > 0) {
+            
+            // 先添加 IndexTTS 聲音（語音克隆）
+            if (indexTTSVoices.length > 0) {
                 // 添加分組標題
-                const edgeGroup = document.createElement('optgroup');
-                edgeGroup.label = '🚀 EdgeTTS (快速)';
-                voiceDropdown.appendChild(edgeGroup);
+                const indexGroup = document.createElement('optgroup');
+                indexGroup.label = '🔬 IndexTTS (語音克隆)';
+                voiceDropdown.appendChild(indexGroup);
                 
-                edgeTTSVoices.forEach(voice => {
+                indexTTSVoices.forEach(voice => {
                     const option = document.createElement('option');
                     option.value = voice.value;
                     option.textContent = voice.text;
                     option.dataset.provider = voice.provider;
-                    edgeGroup.appendChild(option);
+                    indexGroup.appendChild(option);
                 });
             }
-            
+
             // 再添加 CosyVoice 聲音（台語）
             if (cosyVoiceVoices.length > 0) {
                 // 添加分組標題
@@ -1040,21 +1037,22 @@
                 });
             }
             
-            // 最後添加 IndexTTS 聲音（語音克隆）
-            if (indexTTSVoices.length > 0) {
+            // 最後添加 EdgeTTS 聲音（快速）
+            if (edgeTTSVoices.length > 0) {
                 // 添加分組標題
-                const indexGroup = document.createElement('optgroup');
-                indexGroup.label = '🔬 IndexTTS (語音克隆)';
-                voiceDropdown.appendChild(indexGroup);
+                const edgeGroup = document.createElement('optgroup');
+                edgeGroup.label = '🚀 EdgeTTS (快速)';
+                voiceDropdown.appendChild(edgeGroup);
                 
-                indexTTSVoices.forEach(voice => {
+                edgeTTSVoices.forEach(voice => {
                     const option = document.createElement('option');
                     option.value = voice.value;
                     option.textContent = voice.text;
                     option.dataset.provider = voice.provider;
-                    indexGroup.appendChild(option);
+                    edgeGroup.appendChild(option);
                 });
             }
+            
             
             const totalVoices = edgeTTSVoices.length + cosyVoiceVoices.length + indexTTSVoices.length;
             console.log(`🎵 已載入 ${totalVoices} 個聲音選項 (EdgeTTS: ${edgeTTSVoices.length}, CosyVoice: ${cosyVoiceVoices.length}, IndexTTS: ${indexTTSVoices.length})`);
