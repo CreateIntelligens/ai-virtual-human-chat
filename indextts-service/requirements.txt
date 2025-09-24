@@ -15,7 +15,7 @@ gradio
 ninja
 fastapi
 uvicorn
-
+opencc
 
 WeTextProcessing; platform_machine != "Darwin"
 wetext; platform_system == "Darwin"

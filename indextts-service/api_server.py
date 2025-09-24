@@ -22,6 +22,17 @@ import soundfile as sf
 
 from indextts.infer_vllm import IndexTTS
 
+# 嘗試導入 OpenCC 進行繁簡轉換
+try:
+    from opencc import OpenCC
+    opencc_t2s = OpenCC('t2s')  # 繁體轉簡體
+    OPENCC_AVAILABLE = True
+    print("OpenCC 繁簡轉換功能已啟用")
+except ImportError:
+    OPENCC_AVAILABLE = False
+    opencc_t2s = None
+    print("OpenCC 未安裝，繁簡轉換功能將被停用")
+
 # 全域詞庫變數
 custom_dict = {}
 
@@ -64,6 +75,20 @@ def get_speaker_default_seed(speaker_name, fallback_seed=8):
         print(f"獲取 speaker 預設 seed 時發生錯誤: {e}")
         return fallback_seed
 
+def traditional_to_simplified(text):
+    """將繁體字轉換為簡體字"""
+    if not OPENCC_AVAILABLE or not opencc_t2s:
+        return text
+    
+    try:
+        simplified_text = opencc_t2s.convert(text)
+        if simplified_text != text:
+            print(f"繁簡轉換: '{text}' -> '{simplified_text}'")
+        return simplified_text
+    except Exception as e:
+        print(f"繁簡轉換時發生錯誤: {e}")
+        return text
+
 def apply_custom_dict(text):
     """將文字根據自定義詞庫進行轉換"""
     if not custom_dict:
@@ -74,9 +99,23 @@ def apply_custom_dict(text):
         converted_text = converted_text.replace(original, replacement)
     
     if converted_text != text:
-        print(f"文字轉換: '{text}' -> '{converted_text}'")
+        print(f"詞庫轉換: '{text}' -> '{converted_text}'")
     
     return converted_text
+
+def process_text_for_tts(text):
+    """完整的文字處理流程：自定義詞庫轉換 -> 繁簡轉換"""
+    # 步驟 1: 應用自定義詞庫轉換
+    dict_converted_text = apply_custom_dict(text)
+    
+    # 步驟 2: 繁體轉簡體
+    final_text = traditional_to_simplified(dict_converted_text)
+    
+    # 如果有任何轉換，顯示完整的轉換過程
+    if final_text != text:
+        print(f"完整文字處理: '{text}' -> '{final_text}'")
+    
+    return final_text
 
 def convert_audio_with_ffmpeg(input_data, text="", input_format='wav', output_format='wav', target_sample_rate=16000):
     """
@@ -220,17 +259,17 @@ async def tts_api_url(request: Request):
         audio_paths = data["audio_paths"]
         seed = data.get("seed", 8)
 
-        # 應用自定義詞庫轉換
-        converted_text = apply_custom_dict(text)
+        # 完整文字處理：詞庫轉換 + 繁簡轉換
+        processed_text = process_text_for_tts(text)
 
         global tts
-        sr, wav = await tts.infer(audio_paths, converted_text, seed=seed)
+        sr, wav = await tts.infer(audio_paths, processed_text, seed=seed)
         with io.BytesIO() as wav_buffer:
             sf.write(wav_buffer, wav, sr, format='WAV')
             wav_bytes = wav_buffer.getvalue()
         
         # 使用ffmpeg轉換為16kHz
-        wav_bytes_16k = convert_audio_with_ffmpeg(wav_bytes, text=converted_text, target_sample_rate=16000)
+        wav_bytes_16k = convert_audio_with_ffmpeg(wav_bytes, text=processed_text, target_sample_rate=16000)
         return Response(content=wav_bytes_16k, media_type="audio/wav")
     
     except Exception as ex:
@@ -260,17 +299,17 @@ async def tts_api(request: Request):
         else:
             seed = get_speaker_default_seed(character, fallback_seed=8)
 
-        # 應用自定義詞庫轉換
-        converted_text = apply_custom_dict(text)
+        # 完整文字處理：詞庫轉換 + 繁簡轉換
+        processed_text = process_text_for_tts(text)
 
         global tts
-        sr, wav = await tts.infer_with_ref_audio_embed(character, converted_text, seed=seed)
+        sr, wav = await tts.infer_with_ref_audio_embed(character, processed_text, seed=seed)
         with io.BytesIO() as wav_buffer:
             sf.write(wav_buffer, wav, sr, format='WAV')
             wav_bytes = wav_buffer.getvalue()
         
         # 使用ffmpeg轉換為16kHz
-        wav_bytes_16k = convert_audio_with_ffmpeg(wav_bytes, text=converted_text, target_sample_rate=16000)
+        wav_bytes_16k = convert_audio_with_ffmpeg(wav_bytes, text=processed_text, target_sample_rate=16000)
         return Response(content=wav_bytes_16k, media_type="audio/wav")
     
     except Exception as ex:
@@ -335,6 +374,58 @@ async def get_dict_status():
     )
 
 
+@app.post("/test_text_processing")
+async def test_text_processing(request: Request):
+    """測試文字處理功能（詞庫轉換 + 繁簡轉換）"""
+    try:
+        data = await request.json()
+        original_text = data["text"]
+        
+        # 步驟 1: 詞庫轉換
+        dict_converted = apply_custom_dict(original_text)
+        
+        # 步驟 2: 繁簡轉換
+        final_text = traditional_to_simplified(dict_converted)
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "success",
+                "original_text": original_text,
+                "after_dict_conversion": dict_converted,
+                "final_text": final_text,
+                "opencc_available": OPENCC_AVAILABLE,
+                "dict_applied": dict_converted != original_text,
+                "simplified_applied": final_text != dict_converted
+            }
+        )
+    except Exception as ex:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "error": str(ex)
+            }
+        )
+
+
+@app.get("/processing_status")
+async def get_processing_status():
+    """獲取文字處理功能的狀態"""
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "success",
+            "opencc_available": OPENCC_AVAILABLE,
+            "dict_count": len(custom_dict),
+            "processing_pipeline": [
+                "1. 自定義詞庫轉換",
+                "2. 繁體轉簡體 (OpenCC)" if OPENCC_AVAILABLE else "2. 繁體轉簡體 (停用)"
+            ]
+        }
+    )
+
+
 
 @app.post("/audio/speech", responses={
     200: {"content": {"application/octet-stream": {}}},
@@ -355,17 +446,17 @@ async def tts_api_openai(request: Request):
         else:
             seed = get_speaker_default_seed(character, fallback_seed=8)
 
-        # 應用自定義詞庫轉換
-        converted_text = apply_custom_dict(text)
+        # 完整文字處理：詞庫轉換 + 繁簡轉換
+        processed_text = process_text_for_tts(text)
 
         global tts
-        sr, wav = await tts.infer_with_ref_audio_embed(character, converted_text, seed=seed)
+        sr, wav = await tts.infer_with_ref_audio_embed(character, processed_text, seed=seed)
         with io.BytesIO() as wav_buffer:
             sf.write(wav_buffer, wav, sr, format='WAV')
             wav_bytes = wav_buffer.getvalue()
         
         # 使用ffmpeg轉換為16kHz
-        wav_bytes_16k = convert_audio_with_ffmpeg(wav_bytes, text=converted_text, target_sample_rate=16000)
+        wav_bytes_16k = convert_audio_with_ffmpeg(wav_bytes, text=processed_text, target_sample_rate=16000)
         return Response(content=wav_bytes_16k, media_type="audio/wav")
     
     except Exception as ex:
@@ -391,8 +482,8 @@ async def tts_api_upload(
 ):
     """使用上傳的音檔進行 TTS 合成"""
     try:
-        # 應用自定義詞庫轉換
-        converted_text = apply_custom_dict(text)
+        # 完整文字處理：詞庫轉換 + 繁簡轉換
+        processed_text = process_text_for_tts(text)
         
         # 創建臨時目錄保存上傳的音檔
         temp_dir = "/tmp/audio_uploads"
@@ -409,7 +500,7 @@ async def tts_api_upload(
             buffer.write(content)
         
         global tts
-        sr, wav = await tts.infer([temp_filepath], converted_text, seed=seed)
+        sr, wav = await tts.infer([temp_filepath], processed_text, seed=seed)
         
         # 清理臨時文件
         try:
@@ -422,7 +513,7 @@ async def tts_api_upload(
             wav_bytes = wav_buffer.getvalue()
         
         # 使用ffmpeg轉換為16kHz
-        wav_bytes_16k = convert_audio_with_ffmpeg(wav_bytes, text=converted_text, target_sample_rate=16000)
+        wav_bytes_16k = convert_audio_with_ffmpeg(wav_bytes, text=processed_text, target_sample_rate=16000)
         return Response(content=wav_bytes_16k, media_type="audio/wav")
     
     except Exception as ex:
