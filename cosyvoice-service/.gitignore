@@ -1,0 +1,101 @@
+# 模型檔案 (通常很大，不適合放在 Git)
+models/
+# 但是允許 third_party/Matcha-TTS/matcha/models 目錄
+!third_party/Matcha-TTS/matcha/models/
+*.pth
+*.pt
+*.onnx
+*.safetensors
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+
+# Docker
+.dockerignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 日誌檔案
+*.log
+logs/
+tensorboard/
+
+# 臨時檔案
+tmp/
+temp/
+.tmp/
+*.tmp
+
+# 環境變數 (如果包含敏感資訊)
+.env
+.env.local
+.env.production
+.env.staging
+
+# 音頻檔案
+*.wav
+*.mp3
+*.flac
+*.m4a
+*.aac
+audio_output/
+generated_audio/
+
+# 配置檔案中的語音樣本
+config/audio_samples/
+
+# 個人聲音配置
+config/voices.local.json
+
+# 系統檔案
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 備份檔案
+*.bak
+*.backup
+*.old
+
+# 編譯檔案
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg

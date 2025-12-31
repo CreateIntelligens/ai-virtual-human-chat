@@ -50,6 +50,8 @@ indextts-service/logs/*.log
 
 # IndexTTS 音頻樣本文件 (保留配置文件結構)
 indextts-service/assets/voices/*/
+indextts-service/assets/voices/*.mp3
+indextts-service/assets/voices/*.wav
 indextts-service/assets/voices.json
 !indextts-service/assets/voices.sample.json
 !indextts-service/assets/README.md
@@ -63,6 +65,7 @@ sensevoice-service/models/*
 # 測試和臨時文件
 # ===========================================
 
+cosyvoice-service-old/
 # 測試文件
 test_*.py
 *_test.py

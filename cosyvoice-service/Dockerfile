@@ -1,43 +1,58 @@
-FROM python:3.9-slim
-
-# 設定非互動模式
+FROM pytorch/pytorch:2.3.1-cuda12.1-cudnn8-runtime
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 安裝系統依賴
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    python3-dev \
-    git \
-    wget \
-    curl \
-    build-essential \
-    libsndfile1 \
-    ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
+WORKDIR /opt/CosyVoice
 
-# 設定工作目錄
-WORKDIR /app
+# Update package sources and install dependencies
+RUN sed -i s@/archive.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list
+RUN apt-get update -y
+RUN apt-get -y install git unzip git-lfs g++ nginx
 
-# 複製 requirements.txt 並安裝 Python 依賴
+
+
+
+# Set CUDA environment variables
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH=${CUDA_HOME}/bin:${PATH}
+ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+
+# Disable DeepSpeed JIT compilation
+ENV DS_BUILD_OPS=0
+ENV DS_BUILD_FUSED_ADAM=0
+ENV DS_BUILD_CPU_ADAM=0
+ENV DS_BUILD_UTILS=0
+
+# Fix MKL threading layer conflict with OpenMP
+ENV MKL_THREADING_LAYER=GNU
+ENV MKL_SERVICE_FORCE_INTEL=1
+
+# Create a fake nvcc to satisfy DeepSpeed CUDA checks (only for inference, not training)
+RUN mkdir -p /usr/local/cuda/bin && \
+    echo '#!/bin/bash\necho "Cuda compilation tools, release 12.1, V12.1.105"' > /usr/local/cuda/bin/nvcc && \
+    chmod +x /usr/local/cuda/bin/nvcc
+
+
+# Copy only requirements for installation
 COPY requirements.txt .
-RUN pip3 install --no-cache-dir --upgrade pip
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip3 install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host=mirrors.aliyun.com
+    
+# Copy application code
+COPY . /opt/CosyVoice
+RUN chmod +x /opt/CosyVoice/start.sh
 
-# 複製所有必要的程式碼
-COPY cosyvoice/ ./cosyvoice/
-COPY third_party/ ./third_party/
-COPY runtime/ ./runtime/
-COPY config/ ./config/
+# We only pre-generate gRPC files with a temporary copy
+COPY runtime/python/grpc/cosyvoice.proto /tmp/cosyvoice.proto
+RUN mkdir -p /tmp/grpc && \
+    cd /tmp/grpc && \
+    python3 -m grpc_tools.protoc -I/tmp --python_out=. --grpc_python_out=. /tmp/cosyvoice.proto
 
-# 設定 Python 路徑
-ENV PYTHONPATH=/app:/app/third_party/Matcha-TTS
+# Configure Nginx (copy config file for installation)
+COPY nginx.conf /etc/nginx/sites-enabled/cosyvoice
+RUN rm -f /etc/nginx/sites-enabled/default
 
-# 創建模型目錄
-RUN mkdir -p /app/models
+# Expose ports
+EXPOSE 50001 8085
 
-# 暴露端口
-EXPOSE 50001
+# Start services - script is mounted via volume
+CMD ["/opt/CosyVoice/start.sh"]
 
-# 設定啟動命令
-CMD ["python3", "runtime/python/fastapi/server.py", "--port", "50001", "--model_dir", "/app/models/trained_models20250801/cosyvoice2/"]

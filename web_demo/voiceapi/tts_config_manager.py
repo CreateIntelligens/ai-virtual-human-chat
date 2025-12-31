@@ -27,6 +27,9 @@ class TTSConfigManager:
             # 載入 IndexTTS 服務配置
             self._load_indextts_config()
             
+            # 載入 IndexTTS 台語服務配置
+            self._load_indextts_taiwanese_config()
+            
             print(f"✅ 載入了 {len(self.configs)} 個 TTS 配置")
             
         except Exception as e:
@@ -79,6 +82,64 @@ class TTSConfigManager:
                 print(f"⚠️ IndexTTS 配置文件不存在: {indextts_config_path}")
         except Exception as e:
             print(f"❌ 載入 IndexTTS 配置失敗: {e}")
+    
+    def _load_indextts_taiwanese_config(self):
+        """載入 IndexTTS 台語服務配置（固定配置，不需要外部配置文件）"""
+        try:
+            # IndexTTS 台語使用固定配置
+            self.configs["indextts_taiwanese"] = {
+                "provider_info": {
+                    "provider": "indextts_taiwanese",
+                    "display_name": "IndexTTS台語",
+                    "description": "IndexTTS 台語語音合成引擎（固定使用 gentle_female 角色）",
+                    "requires_internet": True,
+                    "supported_languages": ["zh-TW"],
+                    "voices": {
+                        "indextts_taiwanese_default": {
+                            "engine_voice_id": "default",
+                            "display_name": "台語",
+                            "description": "IndexTTS 台語（gentle_female, seed=2）",
+                            "gender": "female",
+                            "age_group": "adult",
+                            "language": "zh-TW",
+                            "quality": "high",
+                            "recommended": True,
+                            "tags": ["taiwanese", "female", "gentle"]
+                        }
+                    },
+                    "default_voice": "indextts_taiwanese_default",
+                    "fallback_voice": "indextts_taiwanese_default",
+                    "api_config": {
+                        "base_url": "http://10.9.0.35:8011",
+                        "timeout": 180,
+                        "retry_attempts": 3,
+                        "health_check_interval": 60
+                    },
+                    "audio_settings": {
+                        "sample_rate": 16000,
+                        "channels": 1,
+                        "format": "wav",
+                        "bit_depth": 16
+                    }
+                },
+                "voices": {
+                    "indextts_taiwanese_default": {
+                        "engine_voice_id": "default",
+                        "display_name": "台語",
+                        "description": "IndexTTS 台語（gentle_female, seed=2）",
+                        "gender": "female",
+                        "age_group": "adult",
+                        "language": "zh-TW",
+                        "quality": "high",
+                        "recommended": True,
+                        "tags": ["taiwanese", "female", "gentle"]
+                    }
+                },
+                "recommended": ["indextts_taiwanese_default"]
+            }
+            print(f"✅ 載入 IndexTTS 台語配置")
+        except Exception as e:
+            print(f"❌ 載入 IndexTTS 台語配置失敗: {e}")
     
     def _convert_edge_tts_format(self, raw_config: Dict[str, Any]) -> Dict[str, Any]:
         """將 EdgeTTS 原始配置轉換為標準格式"""
@@ -275,6 +336,8 @@ class TTSConfigManager:
             return 'edge_tts', voice_id[5:]  # 移除 'edge_' 前綴
         elif voice_id.startswith('cosyvoice_'):
             return 'cosyvoice', voice_id[10:]  # 移除 'cosyvoice_' 前綴
+        elif voice_id.startswith('indextts_taiwanese_'):
+            return 'indextts_taiwanese', voice_id[19:]  # 移除 'indextts_taiwanese_' 前綴
         elif voice_id.startswith('indextts_'):
             return 'indextts', voice_id[9:]  # 移除 'indextts_' 前綴
         

@@ -63,7 +63,7 @@ if __name__ == "__main__":
                         default='0.0.0.0')
     parser.add_argument('--port',
                         type=int,
-                        default='50000')
+                        default='50005')
     parser.add_argument('--mode',
                         default='sft',
                         choices=['sft', 'zero_shot', 'cross_lingual', 'instruct'],

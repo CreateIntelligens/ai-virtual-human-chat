@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  ai-voice-studio:
+    build: .
+    container_name: ai-voice-studio-app
+    ports:
+      - "${PORT:-50005}:50005"
+      - "${WEB_PORT:-8085}:8085"
+    volumes:
+      - .:/opt/CosyVoice
+      - ./nginx.conf:/etc/nginx/sites-enabled/cosyvoice
+    environment:
+      - MODEL_DIR=${MODEL_DIR}
+      - PORT=${PORT}
+      - CUDA_HOME=/usr/local/cuda
+      - DS_BUILD_OPS=0
+      - DS_BUILD_FUSED_ADAM=0
+      - DS_BUILD_CPU_ADAM=0
+      - DS_BUILD_UTILS=0
+    env_file:
+      - .env
+    restart: always
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - ai-voice-studio-network
+
+networks:
+  ai-voice-studio-network:
+    driver: bridge

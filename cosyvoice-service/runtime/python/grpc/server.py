@@ -84,7 +84,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--port',
                         type=int,
-                        default=50000)
+                        default=50005)
     parser.add_argument('--max_conc',
                         type=int,
                         default=4)

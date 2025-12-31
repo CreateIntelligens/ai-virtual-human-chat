@@ -35,13 +35,16 @@ services:
     container_name: cosyvoice-service
     ports:
       - "50001:50001"
+      - "8085:8085"
     volumes:
-      - ./cosyvoice-service/models:/app/models
-      - ./cosyvoice-service/config:/app/config
+      - ./cosyvoice-service:/opt/CosyVoice
+      - ./cosyvoice-service/models:/opt/CosyVoice/models
+      - ./cosyvoice-service/config:/opt/CosyVoice/config
     environment:
-      - MODEL_DIR=./models/trained_models20250801/cosyvoice2/
+      - MODEL_DIR=/opt/CosyVoice/models/trained_models_naer_20251208/cosyvoice2
       - PORT=50001
-      - PYTHONPATH=/app:/app/third_party/Matcha-TTS
+      - ENABLE_VLLM=true
+      - PYTHONPATH=/opt/CosyVoice:/opt/CosyVoice/third_party/Matcha-TTS
     deploy:
       resources:
         reservations:
@@ -50,14 +53,13 @@ services:
               count: 1
               capabilities: [gpu]
     restart: always
-    working_dir: /app
-    command: python3 runtime/python/fastapi/server.py --port 50001 --model_dir ./models/trained_models20250801/cosyvoice2/
+    working_dir: /opt/CosyVoice
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:50001/voices"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:50001/voices', timeout=5)"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 120s
 
   indextts-service:
     build: ./indextts-service

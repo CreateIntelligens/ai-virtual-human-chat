@@ -1,5 +1,5 @@
 """
-EdgeTTS + CosyVoice + IndexTTS 三引擎管理器
+EdgeTTS + CosyVoice + IndexTTS + IndexTTS台語 四引擎管理器
 """
 import os
 import asyncio
@@ -8,10 +8,11 @@ from .tts_config_manager import TTSConfigManager
 from .tts_engines.edge_tts_engine import EdgeTTSEngine
 from .tts_engines.cosyvoice_engine import CosyVoiceEngine
 from .tts_engines.indextts_engine import IndexTTSEngine
+from .tts_engines.indextts_taiwanese_engine import IndexTTSTaiwaneseEngine
 
 
 class DualTTSManager:
-    """EdgeTTS + CosyVoice + IndexTTS 三引擎管理器"""
+    """EdgeTTS + CosyVoice + IndexTTS + IndexTTS台語 四引擎管理器"""
     
     def __init__(self):
         self.engines = {}
@@ -23,8 +24,8 @@ class DualTTSManager:
         await self.initialize_engines()
         
     async def initialize_engines(self):
-        """初始化 EdgeTTS、CosyVoice 和 IndexTTS 引擎"""
-        enabled_providers = os.getenv('TTS_ENABLED_PROVIDERS', 'edge_tts,cosyvoice,indextts').split(',')
+        """初始化 EdgeTTS、CosyVoice、IndexTTS 和 IndexTTS台語 引擎"""
+        enabled_providers = os.getenv('TTS_ENABLED_PROVIDERS', 'edge_tts,cosyvoice,indextts,indextts_taiwanese').split(',')
         
         for provider in enabled_providers:
             provider = provider.strip()
@@ -64,6 +65,18 @@ class DualTTSManager:
                             print(f"⚠️ IndexTTS 引擎初始化失敗（可能是服務未啟動）")
                     else:
                         print(f"⚠️ IndexTTS 配置文件未找到")
+                
+                elif provider == 'indextts_taiwanese' and os.getenv('INDEXTTS_TAIWANESE_ENABLED', 'true').lower() == 'true':
+                    config = self.config_manager.get_provider_config('indextts_taiwanese')
+                    if config:
+                        engine = IndexTTSTaiwaneseEngine(config)
+                        if await engine.initialize():
+                            self.engines[provider] = engine
+                            print(f"✅ IndexTTS台語 引擎已啟用")
+                        else:
+                            print(f"⚠️ IndexTTS台語 引擎初始化失敗（可能是服務未啟動）")
+                    else:
+                        print(f"⚠️ IndexTTS台語 配置文件未找到")
                         
             except Exception as e:
                 print(f"❌ {provider} 引擎初始化失敗: {e}")

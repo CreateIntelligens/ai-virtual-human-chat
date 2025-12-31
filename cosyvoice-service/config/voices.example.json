@@ -1,0 +1,28 @@
+{
+  "voices": [
+    {
+      "id": "gentle_female",
+      "name": "溫柔女聲",
+      "prompt_text": "你好，歡迎使用我們的語音服務",
+      "audio_file": "gentle_female.wav",
+      "seed": 12345,
+      "description": "適合客服、朗讀等溫和場景"
+    },
+    {
+      "id": "professional_male",
+      "name": "專業男聲",
+      "prompt_text": "這是一個專業的語音示範",
+      "audio_file": "professional_male.wav",
+      "seed": 54321,
+      "description": "適合商務簡報、新聞播報等正式場合"
+    },
+    {
+      "id": "cheerful_female",
+      "name": "活潑女聲",
+      "prompt_text": "大家好，很高興為您服務",
+      "audio_file": "cheerful_female.wav",
+      "seed": 48763,
+      "description": "適合廣告、宣傳等活潑場景"
+    }
+  ]
+}

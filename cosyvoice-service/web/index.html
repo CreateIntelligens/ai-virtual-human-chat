@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Voice Studio - 智能文字轉語音</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='7' fill='%234A90E2'/><rect x='6' y='4' width='4' height='6' rx='2' fill='white'/><path d='M8 10v2M6 12h4' stroke='white' stroke-width='1'/></svg>">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-microphone-alt"></i>
+                <h1>AI Voice Studio</h1>
+            </div>
+            <p class="subtitle">智能文字轉語音服務</p>
+        </header>
+
+        <main class="main-content">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-magic"></i>
+                    <h2>AI 語音合成</h2>
+                    <p>選擇聲音類型，輸入文字，即可生成高品質語音</p>
+                </div>
+
+                <form id="ttsForm" class="tts-form">
+                    <div class="form-group">
+                        <label for="ttsText">
+                            <i class="fas fa-edit"></i>
+                            要轉換的文字
+                        </label>
+                        <textarea 
+                            id="ttsText" 
+                            name="tts_text" 
+                            placeholder="請輸入您想要轉換成語音的文字內容..."
+                            required
+                        ></textarea>
+                        <div class="char-count">
+                            <span id="charCount">0</span> / 500 字元
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="voiceSelect">
+                            <i class="fas fa-user-circle"></i>
+                            選擇聲音類型
+                        </label>
+                        <select 
+                            id="voiceSelect" 
+                            name="voice_id" 
+                            required
+                        >
+                            <option value="">請選擇聲音類型...</option>
+                        </select>
+                        <small class="help-text">選擇適合的聲音風格</small>
+                    </div>
+
+                    <button type="submit" class="generate-btn" id="generateBtn">
+                        <i class="fas fa-play"></i>
+                        <span>生成語音</span>
+                    </button>
+
+                    <div class="form-group demo-section">
+                        <label>
+                            <i class="fas fa-lightbulb"></i>
+                            快速測試範例
+                        </label>
+                        <div class="demo-buttons">
+                            <button type="button" class="demo-btn" data-demo="1">
+                                <i class="fas fa-comment-dots"></i>
+                                Demo 1
+                            </button>
+                            <button type="button" class="demo-btn" data-demo="2">
+                                <i class="fas fa-book"></i>
+                                Demo 2
+                            </button>
+                            <button type="button" class="demo-btn" data-demo="3">
+                                <i class="fas fa-headset"></i>
+                                Demo 3
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="results-container" id="resultsContainer" style="display: none;">
+                <div class="card-header">
+                    <i class="fas fa-volume-up"></i>
+                    <h3>生成結果</h3>
+                    <p>已同時生成兩個語音版本</p>
+                </div>
+                
+                <div class="results-grid">
+                    <!-- 第一個結果 -->
+                    <div class="result-card" id="resultCard1">
+                        <div class="result-header">
+                            <i class="fas fa-microphone"></i>
+                            <h4>語音版本 1</h4>
+                        </div>
+                        
+                        <div class="result-loading" id="loading1" style="display: none;">
+                            <div class="spinner-small"></div>
+                            <p>生成中...</p>
+                        </div>
+                        
+                        <div class="audio-content" id="audioContent1" style="display: none;">
+                            <div class="audio-player">
+                                <audio id="audioPlayer1" controls>
+                                    您的瀏覽器不支援音頻播放
+                                </audio>
+                                <div class="audio-controls">
+                                    <button class="download-btn" onclick="downloadAudio(1)">
+                                        <i class="fas fa-download"></i>
+                                        下載音頻
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 第二個結果 -->
+                    <div class="result-card" id="resultCard2">
+                        <div class="result-header">
+                            <i class="fas fa-microphone"></i>
+                            <h4>語音版本 2</h4>
+                        </div>
+                        
+                        <div class="result-loading" id="loading2" style="display: none;">
+                            <div class="spinner-small"></div>
+                            <p>生成中...</p>
+                        </div>
+                        
+                        <div class="audio-content" id="audioContent2" style="display: none;">
+                            <div class="audio-player">
+                                <audio id="audioPlayer2" controls>
+                                    您的瀏覽器不支援音頻播放
+                                </audio>
+                                <div class="audio-controls">
+                                    <button class="download-btn" onclick="downloadAudio(2)">
+                                        <i class="fas fa-download"></i>
+                                        下載音頻
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="loading" id="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>AI 正在生成語音，請稍候...</p>
+            </div>
+
+            <div class="error-message" id="errorMessage" style="display: none;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span id="errorText"></span>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2025 Create Intelligens Inc. All Rights Reserved.</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -64,17 +64,22 @@ class CosyVoiceEngine(BaseTTSEngine):
             return None
         
         try:
+            # 1. 先進行台語翻譯
+            print(f"🔄 正在將文字轉換為台語: {text}")
+            translated_text = await self._translate_to_taiwanese(text)
+            
             # 獲取聲音配置
             voice_config = await self._get_voice_config(voice_id)
             if not voice_config:
                 print(f"❌ 找不到聲音配置: {voice_id}")
                 return None
             
-            print(f"🎵 使用CosyVoice: '{text}' (長度: {len(text)}) -> {voice_config['name']}")
+            print(f"🎵 使用CosyVoice: '{translated_text}' (原文: {text}) -> {voice_config['name']}")
             
             # 準備 API 請求數據 - 使用 ai-voice-studio 的格式
             form_data = aiohttp.FormData()
-            form_data.add_field('tts_text', text)
+            form_data.add_field('tts_text', translated_text)     # 翻譯後的台文
+            form_data.add_field('original_text', text)           # 原始中文
             form_data.add_field('voice_id', voice_id)
             
             # 調用 CosyVoice API - 使用預配置聲音端點
@@ -113,6 +118,34 @@ class CosyVoiceEngine(BaseTTSEngine):
         except Exception as e:
             print(f"❌ CosyVoice 生成失敗: {e}")
             return None
+
+    async def _translate_to_taiwanese(self, text: str) -> str:
+        """
+        將中文翻譯成台文 (使用 learn-language.tokyo API)
+        """
+        try:
+            url = 'https://learn-language.tokyo/taigiTranslator/model2/translate'
+            payload = {
+                "inputText": text,
+                "inputLan": "Traditional Chinese:zhTW",
+                "outputLan": "Taiwanese:tw"
+            }
+            
+            # 設定較短的超時，避免翻譯卡太久影響使用者體驗
+            async with self.session.post(url, json=payload, timeout=5) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    # 根據前端 script.js 的邏輯： data.outputText || data.result || text
+                    result = data.get('outputText') or data.get('result') or text
+                    if result != text:
+                        print(f"🈯 台語翻譯成功: '{text}' -> '{result}'")
+                    return result
+                else:
+                    print(f"⚠️ 台語翻譯 API 回應錯誤: {response.status}")
+                    return text
+        except Exception as e:
+            print(f"⚠️ 台語翻譯失敗，將使用原文: {e}")
+            return text
     
     async def _get_voice_config(self, voice_id: str) -> Optional[Dict[str, Any]]:
         """從 CosyVoice API 獲取聲音配置"""

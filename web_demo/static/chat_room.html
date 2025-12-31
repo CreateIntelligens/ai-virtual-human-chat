@@ -951,6 +951,7 @@
             let edgeTTSVoices = [];
             let cosyVoiceVoices = [];
             let indexTTSVoices = [];
+            let indexTTSTaiwaneseVoices = [];
             
             // 收集所有可用引擎的聲音，按引擎分類
             Object.keys(engineVoices).forEach(provider => {
@@ -973,6 +974,8 @@
                             edgeTTSVoices.push(voiceData);
                         } else if (provider === 'cosyvoice') {
                             cosyVoiceVoices.push(voiceData);
+                        } else if (provider === 'indextts_taiwanese') {
+                            indexTTSTaiwaneseVoices.push(voiceData);
                         } else if (provider === 'indextts') {
                             indexTTSVoices.push(voiceData);
                         }
@@ -1005,7 +1008,7 @@
             // IndexTTS 聲音保持 API 返回的原始順序（由 voices.json 檔案決定）
             
             
-            // 先添加 IndexTTS 聲音（語音克隆）
+            // 1. 先添加 IndexTTS 聲音（語音克隆）
             if (indexTTSVoices.length > 0) {
                 // 添加分組標題
                 const indexGroup = document.createElement('optgroup');
@@ -1021,7 +1024,7 @@
                 });
             }
 
-            // 再添加 CosyVoice 聲音（台語）
+            // 2. 添加 CosyVoice 聲音（台語）
             if (cosyVoiceVoices.length > 0) {
                 // 添加分組標題
                 const cosyGroup = document.createElement('optgroup');
@@ -1036,8 +1039,24 @@
                     cosyGroup.appendChild(option);
                 });
             }
+
+            // 3. 添加 IndexTTS 台語聲音
+            if (indexTTSTaiwaneseVoices.length > 0) {
+                // 添加分組標題
+                const indexTaiwaneseGroup = document.createElement('optgroup');
+                indexTaiwaneseGroup.label = '🧶 IndexTTS (台語)';
+                voiceDropdown.appendChild(indexTaiwaneseGroup);
+                
+                indexTTSTaiwaneseVoices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice.value;
+                    option.textContent = voice.text;
+                    option.dataset.provider = voice.provider;
+                    indexTaiwaneseGroup.appendChild(option);
+                });
+            }
             
-            // 最後添加 EdgeTTS 聲音（快速）
+            // 4. 最後添加 EdgeTTS 聲音（快速）
             if (edgeTTSVoices.length > 0) {
                 // 添加分組標題
                 const edgeGroup = document.createElement('optgroup');
@@ -1053,8 +1072,8 @@
                 });
             }
             
-            const totalVoices = edgeTTSVoices.length + cosyVoiceVoices.length + indexTTSVoices.length;
-            console.log(`🎵 已載入 ${totalVoices} 個聲音選項 (EdgeTTS: ${edgeTTSVoices.length}, CosyVoice: ${cosyVoiceVoices.length}, IndexTTS: ${indexTTSVoices.length})`);
+            const totalVoices = edgeTTSVoices.length + cosyVoiceVoices.length + indexTTSVoices.length + indexTTSTaiwaneseVoices.length;
+            console.log(`🎵 已載入 ${totalVoices} 個聲音選項 (EdgeTTS: ${edgeTTSVoices.length}, CosyVoice: ${cosyVoiceVoices.length}, IndexTTS: ${indexTTSVoices.length}, IndexTTS台語: ${indexTTSTaiwaneseVoices.length})`);
         }
 
         // 獲取當前選擇聲音的提供商（用於自動選擇引擎）
@@ -1069,6 +1088,9 @@
             } else if (selectedVoiceId.startsWith('cosyvoice_')) {
                 console.log(`🎯 前綴識別聲音 ${selectedVoiceId} 屬於引擎: cosyvoice`);
                 return 'cosyvoice';
+            } else if (selectedVoiceId.startsWith('indextts_taiwanese_')) {
+                console.log(`🎯 前綴識別聲音 ${selectedVoiceId} 屬於引擎: indextts_taiwanese`);
+                return 'indextts_taiwanese';
             } else if (selectedVoiceId.startsWith('indextts_')) {
                 console.log(`🎯 前綴識別聲音 ${selectedVoiceId} 屬於引擎: indextts`);
                 return 'indextts';
