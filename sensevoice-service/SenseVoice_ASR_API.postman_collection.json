@@ -1,0 +1,326 @@
+{
+	"info": {
+		"_postman_id": "sensevoice-asr-api",
+		"name": "SenseVoice ASR API",
+		"description": "SenseVoice 語音辨識 API 測試集合",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "ASR - 單個音頻文件（自動檢測語言）",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "files",
+							"type": "file",
+							"src": [],
+							"description": "上傳 WAV 或 MP3 音頻文件（16KHz）"
+						},
+						{
+							"key": "keys",
+							"value": "audio.wav",
+							"type": "text",
+							"description": "音頻文件的名稱"
+						},
+						{
+							"key": "lang",
+							"value": "auto",
+							"type": "text",
+							"description": "語言：auto, zh, en, yue, ja, ko, nospeech"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/v1/asr",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"v1",
+						"asr"
+					]
+				},
+				"description": "使用自動語言檢測進行語音辨識"
+			},
+			"response": []
+		},
+		{
+			"name": "ASR - 中文音頻",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "files",
+							"type": "file",
+							"src": [],
+							"description": "上傳中文音頻文件"
+						},
+						{
+							"key": "keys",
+							"value": "chinese_audio.wav",
+							"type": "text"
+						},
+						{
+							"key": "lang",
+							"value": "zh",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/v1/asr",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"v1",
+						"asr"
+					]
+				},
+				"description": "辨識中文（普通話）音頻"
+			},
+			"response": []
+		},
+		{
+			"name": "ASR - 英文音頻",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "files",
+							"type": "file",
+							"src": []
+						},
+						{
+							"key": "keys",
+							"value": "english_audio.wav",
+							"type": "text"
+						},
+						{
+							"key": "lang",
+							"value": "en",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/v1/asr",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"v1",
+						"asr"
+					]
+				},
+				"description": "辨識英文音頻"
+			},
+			"response": []
+		},
+		{
+			"name": "ASR - 粵語音頻",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "files",
+							"type": "file",
+							"src": []
+						},
+						{
+							"key": "keys",
+							"value": "cantonese_audio.wav",
+							"type": "text"
+						},
+						{
+							"key": "lang",
+							"value": "yue",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/v1/asr",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"v1",
+						"asr"
+					]
+				},
+				"description": "辨識粵語音頻"
+			},
+			"response": []
+		},
+		{
+			"name": "ASR - 多個音頻文件",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "files",
+							"type": "file",
+							"src": [],
+							"description": "第一個音頻文件"
+						},
+						{
+							"key": "files",
+							"type": "file",
+							"src": [],
+							"description": "第二個音頻文件"
+						},
+						{
+							"key": "files",
+							"type": "file",
+							"src": [],
+							"description": "第三個音頻文件"
+						},
+						{
+							"key": "keys",
+							"value": "audio1.wav,audio2.wav,audio3.wav",
+							"type": "text",
+							"description": "用逗號分隔的文件名"
+						},
+						{
+							"key": "lang",
+							"value": "auto",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/v1/asr",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"v1",
+						"asr"
+					]
+				},
+				"description": "批量辨識多個音頻文件"
+			},
+			"response": []
+		},
+		{
+			"name": "檢查 GPU 記憶體使用",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8000/memory",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"memory"
+					]
+				},
+				"description": "獲取當前 GPU 記憶體使用狀態"
+			},
+			"response": []
+		},
+		{
+			"name": "手動清理 GPU 記憶體",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8000/memory/cleanup",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"memory",
+						"cleanup"
+					]
+				},
+				"description": "手動清理 GPU 記憶體快取"
+			},
+			"response": []
+		},
+		{
+			"name": "API 首頁",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8000/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						""
+					]
+				},
+				"description": "查看 API 首頁和文檔鏈接"
+			},
+			"response": []
+		},
+		{
+			"name": "API 文檔（Swagger UI）",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8000/docs",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"docs"
+					]
+				},
+				"description": "訪問 FastAPI 自動生成的 Swagger UI 文檔"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		}
+	]
+}

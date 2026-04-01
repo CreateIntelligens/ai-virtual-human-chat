@@ -16,5 +16,17 @@
             "assets/voices/cindy/Cindy_8_1361920_1537600.wav"
         ],
         "default_seed": 5
+    },
+    "healthy": {
+        "audio_paths": [
+            "assets/voices/healthy/護聯中文18.WAV"
+        ],
+        "default_seed": 2
+    },
+    "healthy2": {
+        "audio_paths": [
+            "assets/voices/healthy/護聯驚喜開場白1.wav"
+        ],
+        "default_seed": 2
     }
 }
