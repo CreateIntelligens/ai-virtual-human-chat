@@ -24,7 +24,7 @@ services:
         condition: service_healthy
       indextts-service:
         condition: service_healthy
-      sensevoice-service:
+      sensevoice-service:  # 已禁用，使用瀏覽器原生 Web Speech API 替代
         condition: service_healthy
     restart: always
     working_dir: /app
@@ -94,31 +94,35 @@ services:
       retries: 3
       start_period: 1800s  # VLLM 需要更長的啟動時間
 
-  sensevoice-service:
-    build: ./sensevoice-service
-    container_name: sensevoice-service
-    ports:
-      - "50002:50002"
-    volumes:
-      - ./sensevoice-service:/app
-      - ./sensevoice-service/models:/app/models  # 模型持久化存儲
-    environment:
-      - SENSEVOICE_DEVICE=cuda:0
-      - PYTHONPATH=/app
-      - PYTHONUNBUFFERED=1
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    restart: always
-    working_dir: /app
-    command: uvicorn api:app --host 0.0.0.0 --port 50002
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:50002/"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 180s  # SenseVoice 模型載入需要較長時間
+  # ==================== SenseVoice 服務已禁用 ====================
+  # 改用瀏覽器原生的 Web Speech API，不需要額外的 STT 服務
+  # 可節省顯存並簡化部署
+  #
+  # sensevoice-service:
+  #   build: ./sensevoice-service
+  #   container_name: sensevoice-service
+  #   ports:
+  #     - "50002:50002"
+  #   volumes:
+  #     - ./sensevoice-service:/app
+  #     - ./sensevoice-service/models:/app/models  # 模型持久化存儲
+  #   environment:
+  #     - SENSEVOICE_DEVICE=cuda:0
+  #     - PYTHONPATH=/app
+  #     - PYTHONUNBUFFERED=1
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities: [gpu]
+  #   restart: always
+  #   working_dir: /app
+  #   command: uvicorn api:app --host 0.0.0.0 --port 50002
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:50002/"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 180s  # SenseVoice 模型載入需要較長時間

@@ -28,5 +28,14 @@
             "assets/voices/healthy/護聯驚喜開場白1.wav"
         ],
         "default_seed": 2
+    },
+    "healthy3": {
+        "audio_paths": [
+            "assets/voices/healthy/護聯正常開場白.mp3",
+            "assets/voices/healthy/護聯輕快開場白.wav",
+            "assets/voices/healthy/護聯驚喜開場白1.wav",
+            "assets/voices/healthy/護聯驚喜開場白2.wav"
+        ],
+        "default_seed": 2
     }
 }
