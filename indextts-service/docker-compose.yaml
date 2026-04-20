@@ -1,6 +1,24 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: indextts-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-indextts}
+      POSTGRES_USER: ${DB_USER:-indextts}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-indextts}
+    ports:
+      - "5422:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-indextts} -d ${DB_NAME:-indextts}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   index-tts:
     build: .
     image: index-tts-server
@@ -13,6 +31,14 @@ services:
       - TORCH_CUDA_ARCH_LIST=8.9
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-indextts}
+      - DB_USER=${DB_USER:-indextts}
+      - DB_PASSWORD=${DB_PASSWORD:-indextts}
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "${PORT:-8001}:${PORT:-8001}"
     deploy:
@@ -34,3 +60,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+volumes:
+  postgres_data:

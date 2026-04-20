@@ -16,6 +16,8 @@ ninja
 fastapi
 uvicorn
 opencc
+asyncpg
+huggingface-hub>=0.30.0,<1.0
 
 WeTextProcessing; platform_machine != "Darwin"
 wetext; platform_system == "Darwin"

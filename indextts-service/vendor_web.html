@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>替換規則管理</title>
+<style>
+  html { zoom: 1.5; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root[data-theme="dark"] {
+    --bg: #141416;
+    --surface: #1c1c20;
+    --surface2: #26262c;
+    --border: rgba(255,255,255,0.1);
+    --border-hi: rgba(255,255,255,0.18);
+    --text: #f0f0f2;
+    --text-m: #8a8a95;
+    --text-d: #56565f;
+    --btn-p-bg: #fafafa;
+    --btn-p-text: #09090b;
+    --btn-p-hover: #e4e4e7;
+    --danger: #ef4444;
+    --danger-dim: rgba(239,68,68,0.1);
+    --success: #22c55e;
+    --code-pat: #a78bfa;
+    --code-rep: #34d399;
+    --shadow: 0 4px 24px rgba(0,0,0,0.6);
+    --shadow-s: 0 1px 6px rgba(0,0,0,0.4);
+  }
+  :root[data-theme="light"] {
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --surface2: #f4f4f5;
+    --border: rgba(0,0,0,0.08);
+    --border-hi: rgba(0,0,0,0.14);
+    --text: #09090b;
+    --text-m: #71717a;
+    --text-d: #a1a1aa;
+    --btn-p-bg: #09090b;
+    --btn-p-text: #fafafa;
+    --btn-p-hover: #18181b;
+    --danger: #dc2626;
+    --danger-dim: rgba(220,38,38,0.08);
+    --success: #16a34a;
+    --code-pat: #7c3aed;
+    --code-rep: #15803d;
+    --shadow: 0 4px 24px rgba(0,0,0,0.08);
+    --shadow-s: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px; min-height: 100vh;
+    padding: 28px 16px 72px;
+    transition: background .25s, color .25s;
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; }
+
+  /* ── Header ── */
+  .hd {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  .hd-title { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+  .hd-sub   { font-size: 12px; color: var(--text-m); margin-top: 2px; }
+  .theme-btn {
+    background: transparent; border: 1px solid var(--border-hi);
+    border-radius: 8px; padding: 7px 11px; cursor: pointer;
+    font-size: 15px; line-height: 1; transition: all .15s; color: var(--text);
+  }
+  .theme-btn:hover { background: var(--surface2); }
+
+  /* ── Notice ── */
+  .notice {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 48px 24px; text-align: center;
+  }
+  .notice p   { font-size: 13px; color: var(--text-m); line-height: 1.7; }
+  .notice code { color: var(--text); font-family: 'Fira Code', monospace; font-size: 13px; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 7px 16px; border-radius: 7px;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    border: none; transition: all .15s; white-space: nowrap; font-family: inherit;
+  }
+  .btn-p { background: var(--btn-p-bg); color: var(--btn-p-text); }
+  .btn-p:hover { background: var(--btn-p-hover); }
+  .btn-g { background: transparent; color: var(--text-m); border: 1px solid var(--border-hi); }
+  .btn-g:hover { background: var(--surface2); color: var(--text); }
+  .btn-d { background: var(--danger-dim); color: var(--danger); border: 1px solid transparent; }
+  .btn-d:hover { background: var(--danger); color: #fff; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 5px; }
+
+  /* ── Stats ── */
+  .srow {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px; gap: 8px; flex-wrap: wrap;
+  }
+  .srow-count {
+    font-size: 11px; color: var(--text-m);
+    background: var(--surface2); border: 1px solid var(--border-hi);
+    padding: 2px 9px; border-radius: 4px;
+  }
+  .srow-count span { color: var(--text); font-weight: 600; }
+
+  /* ── Table ── */
+  .tbl-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden; margin-bottom: 12px;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead { background: var(--surface2); }
+  th {
+    text-align: left; padding: 10px 14px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--text-m);
+    border-bottom: 1px solid var(--border);
+  }
+  td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--surface2); }
+
+  .t-num { color: var(--text-d); font-size: 11px; font-weight: 600; width: 36px; }
+  .t-pat { font-family: 'Fira Code','Cascadia Code',monospace; font-size: 12.5px; color: var(--code-pat); max-width: 230px; word-break: break-all; }
+  :root[data-theme="light"] .t-pat { color: var(--code-pat); }
+  .t-arr { color: var(--text-d); font-size: 14px; text-align: center; width: 26px; }
+  .t-rep { font-family: 'Fira Code','Cascadia Code',monospace; font-size: 12.5px; color: var(--code-rep); max-width: 180px; word-break: break-all; }
+  .acts  { display: flex; gap: 6px; }
+
+  /* ── Empty ── */
+  .empty {
+    text-align: center; padding: 56px 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; margin-bottom: 12px;
+  }
+  .empty-ico { font-size: 38px; margin-bottom: 10px; opacity: .4; }
+  .empty p   { font-size: 13px; color: var(--text-m); }
+  .empty p+p { margin-top: 4px; font-size: 12px; color: var(--text-d); }
+
+  /* ── TTS Preview ── */
+  .preview-row { display: flex; gap: 8px; align-items: flex-start; }
+  .preview-row textarea {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border-hi);
+    border-radius: 7px; padding: 9px 12px;
+    color: var(--text); font-size: 13px; font-family: inherit;
+    outline: none; resize: vertical; min-height: 60px; max-height: 140px;
+    transition: border-color .15s;
+  }
+  .preview-row textarea:focus { border-color: var(--text-d); }
+  .preview-row textarea::placeholder { color: var(--text-d); }
+  .preview-meta { font-size: 11px; color: var(--text-d); margin-top: 6px; }
+  .preview-meta span { color: var(--text-m); }
+  audio { width: 100%; margin-top: 10px; height: 32px; }
+
+  /* ── Boundary buttons ── */
+  .bnd-row { display:flex; gap:5px; flex-wrap:wrap; margin-top:6px; align-items:center; }
+  .bnd-btn {
+    padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 600;
+    cursor: pointer; border: 1px solid var(--border-hi);
+    background: transparent; color: var(--text-m); transition: all .15s; font-family: inherit;
+  }
+  .bnd-btn:hover { background: var(--surface2); color: var(--text); }
+  .bnd-btn.active { background: var(--btn-p-bg); color: var(--btn-p-text); border-color: transparent; }
+  .bnd-help-btn {
+    width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--border-hi);
+    background: transparent; color: var(--text-m); font-size: 10px; font-weight: 700;
+    cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all .15s; padding: 0; line-height: 1; font-family: inherit;
+  }
+  .bnd-help-btn:hover { background: var(--surface2); }
+  .bnd-help-box {
+    display: none; margin-top: 8px;
+    background: var(--surface2); border: 1px solid var(--border-hi);
+    border-radius: 8px; padding: 10px 12px; font-size: 11px;
+  }
+  .bnd-help-box table { width: 100%; border-collapse: collapse; }
+  .bnd-help-box th, .bnd-help-box td { padding: 4px 7px; text-align: left; border-bottom: 1px solid var(--border); }
+  .bnd-help-box tr:last-child td { border-bottom: none; }
+  .bnd-help-box th { font-weight: 600; color: var(--text-m); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
+  .bnd-label { font-size: 10px; color: var(--text-d); align-self: center; margin-right: 2px; }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; margin-bottom: 12px;
+  }
+  .card-hd {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-label { font-size: 11px; font-weight: 600; color: var(--text-m); letter-spacing: .05em; text-transform: uppercase; }
+  .card-body  { padding: 14px 16px; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px;
+    padding: 10px 18px; border-radius: 9px;
+    font-size: 13px; font-weight: 600;
+    z-index: 9999;
+    transform: translateY(80px); opacity: 0;
+    transition: all .25s cubic-bezier(.34,1.56,.64,1);
+    pointer-events: none;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.success { background: var(--surface2); color: var(--success); border: 1px solid rgba(34,197,94,.25); box-shadow: var(--shadow-s); }
+  #toast.error   { background: var(--surface2); color: var(--danger);  border: 1px solid rgba(239,68,68,.25);  box-shadow: var(--shadow-s); }
+
+  /* ── Modal ── */
+  .mbk {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.7); backdrop-filter: blur(4px);
+    z-index: 100; display: none; align-items: center; justify-content: center;
+  }
+  .mbk.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border-hi);
+    border-radius: 14px; padding: 24px; width: 500px; max-width: 95vw;
+    box-shadow: var(--shadow);
+    animation: mIn .2s ease;
+  }
+  @keyframes mIn { from { transform: scale(.96) translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .m-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .m-hd h2 { font-size: 15px; font-weight: 700; }
+  .fg { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .fg label { font-size: 11px; font-weight: 600; color: var(--text-m); letter-spacing: .04em; }
+  .fg input {
+    background: var(--surface2); border: 1px solid var(--border-hi);
+    border-radius: 7px; padding: 10px 12px;
+    color: var(--text); font-size: 14px; outline: none;
+    font-family: inherit; transition: border-color .15s;
+  }
+  .fg input:focus { border-color: var(--text-d); }
+  .m-acts { display: flex; gap: 8px; justify-content: flex-end; padding-top: 14px; border-top: 1px solid var(--border); }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/opencc-js@1.0.5/dist/umd/full.js"></script>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hd">
+    <div>
+      <div class="hd-title" id="pageTitle">替換規則管理</div>
+      <div class="hd-sub"   id="pageSubtitle">管理您的 TTS 文字替換規則</div>
+    </div>
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">☀️</button>
+  </div>
+
+  <!-- No set / blocked -->
+  <div class="notice" id="noSetNotice" style="display:none">
+    <p style="font-size:32px;margin-bottom:14px;opacity:.4">⚠️</p>
+    <p id="noticeMsg">請在網址後方加上您的規則組名稱：</p>
+    <p style="margin-top:8px" id="noticeCode"><code>?set=您的集合名稱</code></p>
+  </div>
+
+  <!-- Rules section -->
+  <div id="rulesSection" style="display:none">
+    <!-- TTS Preview -->
+    <div class="card">
+      <div class="card-hd">
+        <span class="card-label">🎵 試聽 TTS</span>
+      </div>
+      <div class="card-body">
+        <div class="preview-row">
+          <textarea id="previewText" placeholder="輸入要試聽的文字，確認替換規則是否正確生效…"></textarea>
+          <button class="btn btn-p" id="previewBtn" onclick="doPreview()" style="flex-shrink:0">▶ 試聽</button>
+        </div>
+        <div class="preview-meta">套用規則組：<span id="previewSetLabel"></span></div>
+        <audio id="previewAudio" controls style="display:none"></audio>
+      </div>
+    </div>
+
+    <div class="srow">
+      <span class="srow-count">共 <span id="ruleCount">0</span> 條規則</span>
+      <button class="btn btn-p" onclick="openAdd()">＋ 新增規則</button>
+    </div>
+
+    <div class="tbl-wrap" id="tableWrap" style="display:none">
+      <table>
+        <thead>
+          <tr><th>#</th><th>比對文字</th><th></th><th>替換成</th><th>邊界</th><th>操作</th></tr>
+        </thead>
+        <tbody id="rulesBody"></tbody>
+      </table>
+    </div>
+
+    <div id="emptyState" style="display:none">
+      <div class="empty">
+        <div class="empty-ico">📭</div>
+        <p>目前沒有任何替換規則</p>
+        <p>點擊右上方「＋ 新增規則」開始建立</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal -->
+<div class="mbk" id="ruleModal">
+  <div class="modal">
+    <div class="m-hd">
+      <h2 id="modalTitle">新增規則</h2>
+      <button class="btn btn-g btn-sm" onclick="closeModal()">✕</button>
+    </div>
+    <input type="hidden" id="editId">
+    <div class="fg">
+      <label>比對文字（Pattern）</label>
+      <input id="fPattern" placeholder="例如：AIKKA" autocomplete="off">
+      <div class="bnd-row">
+        <span class="bnd-label">比對邊界：</span>
+        <button type="button" class="bnd-btn active" data-bnd="none"  onclick="selectBoundary('none')">不加邊界</button>
+        <button type="button" class="bnd-btn" data-bnd="alpha" onclick="selectBoundary('alpha')">英邊界</button>
+        <button type="button" class="bnd-btn" data-bnd="en"    onclick="selectBoundary('en')">英數邊界</button>
+        <button type="button" class="bnd-btn" data-bnd="all"   onclick="selectBoundary('all')">中英數邊界</button>
+        <button type="button" class="bnd-help-btn" onclick="toggleVBoundaryHelp()">?</button>
+      </div>
+      <div class="bnd-help-box" id="vBoundaryHelp">
+        <table>
+          <thead><tr><th>邊界</th><th style="color:var(--success)">✓ 會命中</th><th style="color:var(--danger)">✗ 不命中</th></tr></thead>
+          <tbody>
+            <tr><td>不加邊界</td><td style="color:var(--success)">任何位置的 AIKKA</td><td style="color:var(--danger)">—</td></tr>
+            <tr><td>英邊界</td><td style="color:var(--success)">AIKKA、AIKKA2</td><td style="color:var(--danger)">SuperAIKKA</td></tr>
+            <tr><td>英數邊界</td><td style="color:var(--success)">AIKKA、（AIKKA）</td><td style="color:var(--danger)">SuperAIKKA、AIKKA2</td></tr>
+            <tr><td>中英數邊界</td><td style="color:var(--success)">（AIKKA）、，AIKKA，</td><td style="color:var(--danger)">SuperAIKKA、AIKKA技術</td></tr>
+          </tbody>
+        </table>
+        <div style="margin-top:6px;font-size:10px;color:var(--text-d)">※ 以輸入「AIKKA」為例。選擇邊界後系統會自動處理，您只需輸入文字本身。</div>
+      </div>
+    </div>
+    <div class="fg">
+      <label>替換成（Replacement）</label>
+      <input id="fReplacement" placeholder="例如：愛卡" autocomplete="off">
+    </div>
+    <div style="display:flex;align-items:center;gap:9px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border-hi);border-radius:7px;margin-bottom:2px">
+      <input type="checkbox" id="fIgnorecase" checked style="width:14px;height:14px;accent-color:var(--text);cursor:pointer;flex-shrink:0">
+      <label for="fIgnorecase" style="font-size:13px;cursor:pointer;user-select:none">忽略大小寫（英文字母不區分大小寫）</label>
+    </div>
+    <div class="m-acts">
+      <button class="btn btn-g" onclick="closeModal()">取消</button>
+      <button class="btn btn-p" onclick="saveRule()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const params   = new URLSearchParams(location.search);
+const SET_NAME = params.get('set') || '';
+let rules = [];
+let tt;
+let selectedBoundary = 'none';
+
+const CJK_PUNCT_V = "\uff0c\u3002\uff01\uff1f\uff1b\uff1a\u3001\uff08\uff09\u3010\u3011\u300a\u300b\u201c\u201d\u2018\u2019";
+const V_BOUNDARIES = {
+  none:  [null, null],
+  alpha: ["(?<![A-Za-z])",                    "(?![A-Za-z])"],
+  en:    ["(?<![A-Za-z0-9])",                 "(?![A-Za-z0-9])"],
+  all:   ["(?<![A-Za-z0-9\\u4e00-\\u9fff])",  "(?![A-Za-z0-9\\u4e00-\\u9fff])"],
+};
+
+function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+function detectVBoundary(pattern) {
+  for (const [type, [pre, post]] of Object.entries(V_BOUNDARIES)) {
+    if (pre && post && pattern.startsWith(pre) && pattern.endsWith(post)) {
+      const inner = pattern.slice(pre.length, pattern.length - post.length);
+      return { type, plain: inner.replace(/\\([.*+?^${}()|[\]\\])/g, '$1') };
+    }
+  }
+  return { type: 'none', plain: pattern };
+}
+
+function selectBoundary(type) {
+  selectedBoundary = type;
+  document.querySelectorAll('.bnd-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.bnd === type);
+  });
+}
+
+function toggleVBoundaryHelp() {
+  const el = document.getElementById('vBoundaryHelp');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+(function init() {
+  initTheme();
+  if (!SET_NAME) {
+    document.getElementById('noSetNotice').style.display = '';
+  } else if (SET_NAME === '_global_') {
+    const n = document.getElementById('noSetNotice');
+    n.style.display = '';
+    document.getElementById('noticeMsg').textContent = '此頁面無法存取全域規則組。';
+    document.getElementById('noticeCode').style.display = 'none';
+  } else {
+    document.getElementById('pageTitle').textContent    = `替換規則 — ${SET_NAME}`;
+    document.getElementById('pageSubtitle').textContent = `規則組：${SET_NAME}`;
+    document.getElementById('rulesSection').style.display = '';
+    document.getElementById('previewSetLabel').textContent = SET_NAME;
+    loadRules();
+  }
+})();
+
+function toggleTheme() {
+  const r = document.documentElement;
+  const next = r.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  r.setAttribute('data-theme', next);
+  document.getElementById('themeBtn').textContent = next === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem('vw-theme', next);
+}
+function initTheme() {
+  const s = localStorage.getItem('vw-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', s);
+  document.getElementById('themeBtn').textContent = s === 'dark' ? '☀️' : '🌙';
+}
+
+async function loadRules() {
+  try {
+    const res = await fetch(`/replacements/${encodeURIComponent(SET_NAME)}`);
+    rules = await res.json(); renderTable();
+  } catch(e) { toast('載入失敗：' + e.message, 'error'); }
+}
+
+const BND_LABEL = { none: '—', alpha: '英邊界', en: '英數邊界', all: '中英數邊界' };
+
+function renderTable() {
+  document.getElementById('ruleCount').textContent = rules.length;
+  document.getElementById('tableWrap').style.display  = rules.length ? '' : 'none';
+  document.getElementById('emptyState').style.display = rules.length ? 'none' : '';
+  document.getElementById('rulesBody').innerHTML = rules.map((r, i) => {
+    const { type, plain } = detectVBoundary(r.pattern);
+    const bndLabel = BND_LABEL[type] ?? type;
+    const bndStyle = type === 'none'
+      ? 'color:var(--text-d);font-size:11px'
+      : 'font-size:11px;font-weight:600;background:var(--surface2);border:1px solid var(--border-hi);padding:2px 7px;border-radius:4px';
+    return `<tr>
+      <td class="t-num">${i + 1}</td>
+      <td><div class="t-pat">${esc(plain)}</div></td>
+      <td class="t-arr">→</td>
+      <td><div class="t-rep">${esc(r.replacement)}</div></td>
+      <td><span style="${bndStyle}">${bndLabel}</span></td>
+      <td><div class="acts">
+        <button class="btn btn-g btn-sm" onclick="openEdit(${r.id})">編輯</button>
+        <button class="btn btn-d btn-sm" onclick="deleteRule(${r.id})">刪除</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function openAdd() {
+  document.getElementById('modalTitle').textContent = '新增規則';
+  document.getElementById('editId').value = '';
+  document.getElementById('fPattern').value = '';
+  document.getElementById('fReplacement').value = '';
+  document.getElementById('vBoundaryHelp').style.display = 'none';
+  selectBoundary('none');
+  document.getElementById('ruleModal').classList.add('open');
+  setTimeout(() => document.getElementById('fPattern').focus(), 80);
+}
+
+function openEdit(id) {
+  const r = rules.find(x => x.id === id); if (!r) return;
+  document.getElementById('modalTitle').textContent = '編輯規則';
+  document.getElementById('editId').value = id;
+  // 自動偵測並剝除邊界，只顯示純文字
+  const { type, plain } = detectVBoundary(r.pattern);
+  document.getElementById('fPattern').value = plain;
+  document.getElementById('fReplacement').value = r.replacement;
+  document.getElementById('fIgnorecase').checked = (r.flags || []).includes('IGNORECASE');
+  document.getElementById('vBoundaryHelp').style.display = 'none';
+  selectBoundary(type);
+  document.getElementById('ruleModal').classList.add('open');
+  setTimeout(() => document.getElementById('fPattern').focus(), 80);
+}
+
+function closeModal() { document.getElementById('ruleModal').classList.remove('open'); }
+
+async function saveRule() {
+  const id          = document.getElementById('editId').value;
+  const plain       = document.getElementById('fPattern').value.trim();
+  const replacement = document.getElementById('fReplacement').value.trim();
+  if (!plain) { toast('比對文字不能為空', 'error'); return; }
+  const flags = document.getElementById('fIgnorecase').checked ? ['IGNORECASE'] : [];
+
+  // 若選了邊界，自動 escape 後包上邊界並以 regex 模式儲存
+  let pattern  = plain;
+  let is_regex = false;
+  const bnd = V_BOUNDARIES[selectedBoundary] || [null, null];
+  if (bnd[0] && bnd[1]) {
+    pattern  = bnd[0] + escapeRegex(plain) + bnd[1];
+    is_regex = true;
+  }
+
+  try {
+    const url = id
+      ? `/replacements/${encodeURIComponent(SET_NAME)}/${id}`
+      : `/replacements/${encodeURIComponent(SET_NAME)}`;
+    const res = await fetch(url, {
+      method: id ? 'PUT' : 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ pattern, replacement, is_regex, flags, order_num: 0 }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    toast(id ? '規則已更新' : '規則已新增', 'success');
+    closeModal(); loadRules();
+  } catch(e) { toast('儲存失敗：' + e.message, 'error'); }
+}
+
+async function deleteRule(id) {
+  if (!confirm('確定要刪除這條規則？')) return;
+  try {
+    const res = await fetch(`/replacements/${encodeURIComponent(SET_NAME)}/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(await res.text());
+    toast('已刪除', 'success'); loadRules();
+  } catch(e) { toast('刪除失敗：' + e.message, 'error'); }
+}
+
+let _t2s = null;
+let _previewCtx = null;
+
+async function toSimplified(text) {
+  try {
+    if (!_t2s && typeof OpenCC !== 'undefined') _t2s = OpenCC.Converter({ from: 'tw', to: 'cn' });
+    if (_t2s) return await _t2s(text);
+  } catch(e) {}
+  return text;
+}
+
+async function doPreview() {
+  const text = document.getElementById('previewText').value.trim();
+  if (!text) { toast('請輸入試聽文字', 'error'); return; }
+
+  if (_previewCtx) { _previewCtx.close(); _previewCtx = null; }
+
+  const btn = document.getElementById('previewBtn');
+  btn.disabled = true;
+  btn.textContent = '連線中…';
+
+  try {
+    const simplified = await toSimplified(text);
+    const res = await fetch('/tts_stream', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ text: simplified, character: 'hayley', replacement: SET_NAME }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    _previewCtx = ctx;
+    const SAMPLE_RATE = 16000;
+    const reader = res.body.getReader();
+    let headerSkipped = false;
+    let leftover = new Uint8Array(0);
+    let nextStart = ctx.currentTime + 0.08;
+
+    btn.disabled = false;
+    btn.textContent = '■ 停止';
+    btn.onclick = stopPreview;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done || ctx.state === 'closed') break;
+
+      let raw = headerSkipped ? value : value.slice(44);
+      if (!headerSkipped) headerSkipped = true;
+
+      let pcm;
+      if (leftover.length > 0) {
+        pcm = new Uint8Array(leftover.length + raw.length);
+        pcm.set(leftover);
+        pcm.set(raw, leftover.length);
+      } else {
+        pcm = raw;
+      }
+
+      if (pcm.length % 2 !== 0) {
+        leftover = pcm.slice(pcm.length - 1);
+        pcm = pcm.slice(0, pcm.length - 1);
+      } else {
+        leftover = new Uint8Array(0);
+      }
+
+      if (pcm.length < 2) continue;
+
+      const n = pcm.length / 2;
+      const i16 = new Int16Array(pcm.buffer, pcm.byteOffset, n);
+      const f32 = new Float32Array(n);
+      for (let i = 0; i < n; i++) f32[i] = i16[i] / 32768;
+
+      const buf = ctx.createBuffer(1, n, SAMPLE_RATE);
+      buf.getChannelData(0).set(f32);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      const t = Math.max(nextStart, ctx.currentTime + 0.02);
+      src.start(t);
+      nextStart = t + n / SAMPLE_RATE;
+    }
+
+    setTimeout(() => {
+      if (_previewCtx === ctx) { ctx.close(); _previewCtx = null; resetPreviewBtn(); }
+    }, Math.max((nextStart - ctx.currentTime) * 1000 + 300, 300));
+
+  } catch(e) {
+    toast('試聽失敗：' + e.message, 'error');
+    resetPreviewBtn();
+  }
+}
+
+function stopPreview() {
+  if (_previewCtx) { _previewCtx.close(); _previewCtx = null; }
+  resetPreviewBtn();
+}
+
+function resetPreviewBtn() {
+  const btn = document.getElementById('previewBtn');
+  btn.disabled = false; btn.textContent = '▶ 試聽'; btn.onclick = doPreview;
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = `show ${type}`;
+  clearTimeout(tt); tt = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+document.getElementById('ruleModal').addEventListener('click', function(e) { if (e.target===this) closeModal(); });
+</script>
+</body>
+</html>

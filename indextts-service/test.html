@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IndexTTS — 串流合成</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg:       #0a0b0f;
+    --surface:  #111318;
+    --surface2: #161820;
+    --border:   #1e2230;
+    --border2:  #272c40;
+    --text:     #d4d8e8;
+    --muted:    #52587a;
+    --amber:    #e8a838;
+    --amber2:   #f0c060;
+    --amberDim: rgba(232,168,56,0.12);
+    --amberGlow:rgba(232,168,56,0.35);
+    --green:    #3ecf8e;
+    --red:      #f06060;
+    --blue:     #60a8f0;
+    --mono:     'DM Mono', 'SF Mono', monospace;
+    --sans:     'DM Sans', system-ui, sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased; }
+
+  .shell {
+    min-height: 100vh;
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 1.75rem 0 1.25rem;
+    display: flex; align-items: center; gap: 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    font-family: var(--mono); font-size: 0.8rem; font-weight: 500;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--amber);
+  }
+  .logo em { color: var(--muted); font-style: normal; }
+  .badge {
+    font-family: var(--mono); font-size: 0.6rem; color: var(--muted);
+    padding: 2px 7px; border: 1px solid var(--border2); border-radius: 3px;
+    letter-spacing: 0.08em;
+  }
+
+  /* ── Sections ── */
+  .section { padding: 1.5rem 0; border-bottom: 1px solid var(--border); }
+  .section-header {
+    display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.1rem;
+  }
+  .section-num {
+    font-family: var(--mono); font-size: 0.6rem; color: var(--amberDim);
+    background: var(--amberDim); color: var(--amber); padding: 1px 6px;
+    border-radius: 3px; letter-spacing: 0.1em;
+  }
+  .section-title {
+    font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--muted);
+  }
+
+  /* ── Textarea ── */
+  .textarea-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden; margin-bottom: 1rem;
+    transition: border-color 0.15s;
+  }
+  .textarea-wrap:focus-within { border-color: var(--border2); }
+  textarea {
+    width: 100%; background: transparent; border: none; outline: none;
+    color: var(--text); font-family: var(--sans); font-size: 0.9375rem;
+    line-height: 1.65; resize: none; min-height: 100px;
+    padding: 0.875rem 1rem;
+  }
+  textarea::placeholder { color: var(--muted); }
+
+  /* ── Mode tabs ── */
+  .tabs {
+    display: flex; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 7px; padding: 3px; margin-bottom: 0.875rem;
+  }
+  .tab {
+    flex: 1; padding: 0.45rem 0.75rem; text-align: center;
+    font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.05em;
+    color: var(--muted); border-radius: 5px; cursor: pointer;
+    transition: background 0.15s, color 0.15s; user-select: none;
+  }
+  .tab.active { background: var(--border2); color: var(--amber); }
+
+  /* ── Inputs ── */
+  .field { margin-bottom: 0.75rem; }
+  .field-label {
+    font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 0.35rem;
+  }
+  select, input[type="text"] {
+    width: 100%; background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 7px; color: var(--text); font-family: var(--mono);
+    font-size: 0.8rem; padding: 0.55rem 0.75rem; outline: none;
+    transition: border-color 0.15s; appearance: none; -webkit-appearance: none;
+  }
+  select:focus, input[type="text"]:focus { border-color: var(--amber); }
+  select { cursor: pointer; }
+  .hint { font-family: var(--mono); font-size: 0.65rem; color: var(--muted); margin-top: 0.3rem; }
+
+  /* ── Generate button ── */
+  .btn-generate {
+    width: 100%; padding: 0.75rem 1.25rem;
+    background: var(--amber); color: #0a0b0f;
+    font-family: var(--mono); font-size: 0.75rem; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    border: none; border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+  .btn-generate:hover { background: var(--amber2); box-shadow: 0 0 20px var(--amberGlow); }
+  .btn-generate.generating {
+    background: transparent; color: var(--amber);
+    border: 1px solid var(--amber); cursor: pointer;
+    box-shadow: none;
+  }
+  .btn-generate.generating:hover { background: var(--amberDim); }
+  .gen-hint {
+    font-family: var(--mono); font-size: 0.62rem; color: var(--muted);
+    text-align: center; margin-top: 0.5rem; min-height: 1rem;
+    letter-spacing: 0.04em;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 12px; height: 12px; border: 1.5px solid currentColor;
+    border-top-color: transparent; border-radius: 50%;
+    animation: spin 0.75s linear infinite; display: none; flex-shrink: 0;
+  }
+  .generating .spinner { display: block; }
+
+  /* ── Player ── */
+  .player {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .player.active { border-color: var(--border2); }
+
+  /* Waveform */
+  .viz-wrap { padding: 0.75rem 1rem 0.625rem; background: var(--surface2); }
+  canvas { width: 100%; height: 56px; display: block; border-radius: 3px; }
+
+  /* Progress */
+  .progress-wrap { padding: 0.75rem 1rem 0; }
+  .progress-track {
+    height: 3px; background: var(--border2); border-radius: 2px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; width: 0%; background: var(--amber); border-radius: 2px;
+    transition: width 0.08s linear; box-shadow: 0 0 6px var(--amberGlow);
+  }
+  .time-row {
+    display: flex; justify-content: space-between; margin-top: 0.4rem;
+    font-family: var(--mono); font-size: 0.65rem; color: var(--muted);
+    letter-spacing: 0.06em; padding-bottom: 0.5rem;
+  }
+
+  /* Transport */
+  .transport {
+    padding: 0.875rem 1rem;
+    display: flex; align-items: center; gap: 0.625rem;
+    border-top: 1px solid var(--border);
+  }
+  .ctrl-btn {
+    background: transparent; border: 1px solid var(--border2);
+    border-radius: 50%; color: var(--muted); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; flex-shrink: 0; font-size: 1rem;
+    line-height: 1;
+  }
+  .ctrl-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+  .ctrl-btn:not(:disabled):hover { border-color: var(--amber); color: var(--amber); }
+  #btnPlayPause { width: 46px; height: 46px; font-size: 1.1rem; }
+  #btnStop, #btnReplay { width: 36px; height: 36px; font-size: 0.85rem; }
+  .ctrl-btn.lit { border-color: var(--amber); color: var(--amber); background: var(--amberDim); }
+
+  /* Status in transport */
+  .player-status {
+    flex: 1; font-family: var(--mono); font-size: 0.68rem; color: var(--muted);
+    display: flex; align-items: center; gap: 0.45rem; min-width: 0;
+  }
+  .pdot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--border2);
+    flex-shrink: 0; transition: background 0.3s;
+  }
+  .pdot.streaming { background: var(--amber); animation: blink 0.9s infinite; }
+  .pdot.playing   { background: var(--green); }
+  .pdot.paused    { background: var(--amber); }
+  .pdot.done      { background: var(--blue); }
+  .pdot.error     { background: var(--red); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+  .ptext { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Download button */
+  .btn-dl {
+    background: transparent; border: 1px solid var(--border2);
+    border-radius: 6px; color: var(--muted);
+    font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.08em;
+    padding: 0.4rem 0.75rem; cursor: pointer; white-space: nowrap;
+    transition: all 0.15s; display: none; flex-shrink: 0;
+  }
+  .btn-dl:hover { border-color: var(--green); color: var(--green); }
+  .btn-dl.visible { display: block; }
+
+  footer {
+    padding: 1.25rem 0; font-family: var(--mono); font-size: 0.6rem;
+    color: var(--muted); display: flex; justify-content: space-between;
+    border-top: 1px solid var(--border); margin-top: auto;
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header>
+    <div class="logo">Index<em>TTS</em></div>
+    <div class="badge">vLLM · stream</div>
+  </header>
+
+  <!-- ── 01 生成設定 ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <span class="section-title">文字與語音來源</span>
+    </div>
+
+    <div class="textarea-wrap">
+      <textarea id="textInput" placeholder="輸入要合成的文字，支援中文與英文…&#10;例如：你好，這是串流測試。歡迎使用 IndexTTS。"></textarea>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" id="tabChar" onclick="setMode('character')">預設角色</div>
+      <div class="tab"        id="tabPath" onclick="setMode('path')">音頻路徑</div>
+    </div>
+
+    <div id="charPanel" class="field">
+      <div class="field-label">角色</div>
+      <select id="charSelect"><option value="">載入中…</option></select>
+    </div>
+    <div id="pathPanel" class="field" style="display:none">
+      <div class="field-label">伺服器端音檔路徑</div>
+      <input type="text" id="audioPath" placeholder="assets/voices/speaker.wav" />
+      <div class="hint">多個路徑以英文逗號分隔</div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">替換規則組（可選）</div>
+      <select id="replacementSelect">
+        <option value="">— 不使用 —</option>
+      </select>
+    </div>
+
+    <button class="btn-generate" id="btnGenerate" onclick="startGenerate()">
+      <div class="spinner"></div>
+      <span>▶ 開始生成</span>
+    </button>
+    <div class="gen-hint" id="genHint"></div>
+  </div>
+
+  <!-- ── 02 播放器 ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <span class="section-title">播放器</span>
+    </div>
+
+    <div class="player" id="player">
+      <div class="viz-wrap">
+        <canvas id="vizCanvas"></canvas>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="time-row">
+          <span id="timeCurrent">0:00</span>
+          <span id="timeTotal">--:--</span>
+        </div>
+      </div>
+
+      <div class="transport">
+        <button class="ctrl-btn" id="btnPlayPause" onclick="playerPlayPause()" disabled title="播放 / 暫停">⏵</button>
+        <button class="ctrl-btn" id="btnStop"      onclick="playerStop()"      disabled title="停止">⏹</button>
+        <button class="ctrl-btn" id="btnReplay"    onclick="playerReplay()"    disabled title="重聽">↺</button>
+
+        <div class="player-status">
+          <div class="pdot" id="pdot"></div>
+          <span class="ptext" id="ptext">就緒</span>
+        </div>
+
+        <button class="btn-dl" id="btnDl" onclick="downloadAudio()">↓ 下載 WAV</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>IndexTTS-vLLM streaming demo</span>
+    <span>16 kHz · mono · PCM S16LE</span>
+  </footer>
+</div>
+
+<script>
+/* ── Config ─────────────────────────────────── */
+const API = '';
+const SR  = 16000;
+const HDR = 44;
+
+/* ── App state ──────────────────────────────── */
+// IDLE | STREAMING | PLAYING | PAUSED | DONE | STOPPED
+let appState = 'IDLE';
+
+let actx          = null;
+let nextTime      = 0;
+let audioStartTime = null;   // actx.currentTime when first buffer starts
+let abort         = null;
+let carry         = null;
+let hdrLeft       = HDR;
+let pcmChunks     = [];
+let totalSamples  = 0;
+let lastSrc       = null;
+let genId         = 0;       // generation sequence id for race prevention
+
+/* ── Viz ────────────────────────────────────── */
+const canvas = document.getElementById('vizCanvas');
+const c2d    = canvas.getContext('2d');
+let vizBuf   = new Float32Array(400);
+let vizHead  = 0;
+let vizRaf   = null;
+
+function vizPush(f32) {
+  const step = Math.max(1, Math.floor(f32.length / 80));
+  for (let i = 0; i < f32.length; i += step) {
+    vizBuf[vizHead % vizBuf.length] = f32[i];
+    vizHead++;
+  }
+}
+
+function vizDraw() {
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth * dpr, H = canvas.offsetHeight * dpr;
+  if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+  c2d.clearRect(0, 0, W, H);
+  const len = vizBuf.length, mid = H / 2;
+  c2d.strokeStyle = '#1a1d28'; c2d.lineWidth = 1;
+  c2d.beginPath(); c2d.moveTo(0, mid); c2d.lineTo(W, mid); c2d.stroke();
+  const g = c2d.createLinearGradient(0, 0, W, 0);
+  g.addColorStop(0, 'rgba(232,168,56,0.1)');
+  g.addColorStop(0.5, 'rgba(232,168,56,0.9)');
+  g.addColorStop(1, 'rgba(232,168,56,0.1)');
+  c2d.strokeStyle = g; c2d.lineWidth = 1.5; c2d.beginPath();
+  for (let i = 0; i < len; i++) {
+    const x = (i / len) * W;
+    const y = mid - vizBuf[(vizHead + i) % len] * mid * 0.85;
+    i === 0 ? c2d.moveTo(x, y) : c2d.lineTo(x, y);
+  }
+  c2d.stroke();
+}
+
+function vizStart() {
+  function loop() { vizDraw(); vizRaf = requestAnimationFrame(loop); }
+  if (!vizRaf) loop();
+}
+function vizStop() {
+  if (vizRaf) { cancelAnimationFrame(vizRaf); vizRaf = null; }
+  vizDraw();
+}
+
+/* ── Progress RAF ───────────────────────────── */
+let progressRaf = null;
+
+function fmtTime(s) {
+  if (!isFinite(s) || s < 0) s = 0;
+  return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+}
+
+function progressLoop() {
+  if (actx && audioStartTime !== null) {
+    const total = totalSamples / SR;
+    const pos   = Math.min(actx.currentTime - audioStartTime, total);
+    document.getElementById('timeCurrent').textContent = fmtTime(pos);
+    if (total > 0) {
+      document.getElementById('progressFill').style.width = `${(pos / total) * 100}%`;
+      document.getElementById('timeTotal').textContent = fmtTime(total);
+    }
+  }
+  progressRaf = requestAnimationFrame(progressLoop);
+}
+function progressStart() { if (!progressRaf) progressLoop(); }
+function progressStop()  { if (progressRaf) { cancelAnimationFrame(progressRaf); progressRaf = null; } }
+
+/* ── State machine ──────────────────────────── */
+function setState(s) {
+  appState = s;
+
+  const idle      = s === 'IDLE';
+  const streaming = s === 'STREAMING';
+  const playing   = s === 'PLAYING';
+  const paused    = s === 'PAUSED';
+  const done      = s === 'DONE';
+
+  // Generate button
+  const btn = document.getElementById('btnGenerate');
+  btn.classList.toggle('generating', streaming);
+  document.getElementById('genHint').textContent = streaming
+    ? '生成中… 點擊按鈕可中斷並開啟新任務' : '';
+
+  // Player panel
+  document.getElementById('player').classList.toggle('active', !idle);
+
+  // Play/Pause button — also usable during STREAMING (suspends audio; generation continues)
+  const pp = document.getElementById('btnPlayPause');
+  pp.disabled = idle;
+  pp.textContent = paused ? '⏵' : '⏸';
+  pp.classList.toggle('lit', playing || paused);
+
+  // Stop button: enabled during STREAMING (aborts stream + audio) or while audio is live
+  document.getElementById('btnStop').disabled = !(streaming || playing || paused);
+
+  // Replay button: enabled when we have audio and not streaming
+  document.getElementById('btnReplay').disabled = streaming || pcmChunks.length === 0;
+
+  // Download
+  if (pcmChunks.length > 0 && !idle)
+    document.getElementById('btnDl').classList.add('visible');
+}
+
+function setPlayerStatus(dotClass, text) {
+  document.getElementById('pdot').className = 'pdot' + (dotClass ? ' ' + dotClass : '');
+  document.getElementById('ptext').textContent = text;
+}
+
+/* ── Voices ─────────────────────────────────── */
+let mode = 'character';
+function setMode(m) {
+  mode = m;
+  document.getElementById('tabChar').classList.toggle('active', m === 'character');
+  document.getElementById('tabPath').classList.toggle('active', m === 'path');
+  document.getElementById('charPanel').style.display = m === 'character' ? '' : 'none';
+  document.getElementById('pathPanel').style.display = m === 'path' ? '' : 'none';
+}
+
+async function loadVoices() {
+  try {
+    const v = await (await fetch(API + '/audio/voices')).json();
+    const names = Object.keys(v);
+    document.getElementById('charSelect').innerHTML = names.length
+      ? names.map(n => `<option value="${n}">${n}</option>`).join('')
+      : '<option value="">（無可用角色）</option>';
+  } catch {
+    document.getElementById('charSelect').innerHTML = '<option value="">載入失敗</option>';
+  }
+}
+
+async function loadReplacementSets() {
+  try {
+    const sets = await (await fetch(API + '/replacements')).json();
+    const sel = document.getElementById('replacementSelect');
+    if (Array.isArray(sets) && sets.length > 0) {
+      sets.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.set_name;
+        opt.textContent = `${s.set_name}（${s.rule_count} 條）`;
+        sel.appendChild(opt);
+      });
+    }
+  } catch {
+    // DB 未連線或無規則，保持預設「不使用」
+  }
+}
+
+/* ── AudioContext helpers ────────────────────── */
+function ensureActx() {
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SR });
+  if (actx.state === 'suspended') actx.resume();
+}
+function closeActx() {
+  if (actx) { actx.close(); actx = null; }
+  nextTime = 0; audioStartTime = null; lastSrc = null;
+}
+
+/* ── PCM processing ──────────────────────────── */
+function processPCM(u8) {
+  if (carry !== null) {
+    const m = new Uint8Array(1 + u8.length);
+    m[0] = carry; m.set(u8, 1); u8 = m; carry = null;
+  }
+  if (u8.length % 2 !== 0) { carry = u8[u8.length - 1]; u8 = u8.slice(0, u8.length - 1); }
+  if (u8.length === 0) return;
+
+  const i16 = new Int16Array(u8.buffer, u8.byteOffset, u8.byteLength / 2);
+  const f32 = new Float32Array(i16.length);
+  for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32767.0;
+
+  pcmChunks.push(new Int16Array(i16));
+  totalSamples += i16.length;
+  vizPush(f32);
+
+  const buf = actx.createBuffer(1, f32.length, SR);
+  buf.getChannelData(0).set(f32);
+  const src = actx.createBufferSource();
+  src.buffer = buf; src.connect(actx.destination);
+  const t = Math.max(actx.currentTime + 0.06, nextTime);
+  if (audioStartTime === null) audioStartTime = t;
+  src.start(t);
+  nextTime = t + buf.duration;
+
+  if (lastSrc) lastSrc.onended = null;
+  lastSrc = src;
+  src.onended = () => {
+    if (src !== lastSrc) return;
+    lastSrc = null;
+    // Only fire if we're still in PLAYING state (not interrupted)
+    if (appState === 'PLAYING') {
+      setState('DONE');
+      setPlayerStatus('done', '播放完畢');
+      document.getElementById('progressFill').style.width = '100%';
+      document.getElementById('timeCurrent').textContent = fmtTime(totalSamples / SR);
+      document.getElementById('timeTotal').textContent   = fmtTime(totalSamples / SR);
+    }
+  };
+}
+
+/* ── Generate ────────────────────────────────── */
+async function startGenerate() {
+  const text = document.getElementById('textInput').value.trim();
+  if (!text) { alert('請輸入文字'); return; }
+
+  // Interrupt any existing session
+  const myId = ++genId;
+  if (abort) { abort.abort(); abort = null; }
+  closeActx();
+  progressStop(); vizStop();
+
+  // Reset
+  pcmChunks = []; totalSamples = 0; carry = null; hdrLeft = HDR;
+  vizBuf = new Float32Array(400); vizHead = 0;
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('timeCurrent').textContent = '0:00';
+  document.getElementById('timeTotal').textContent   = '--:--';
+  document.getElementById('btnDl').classList.remove('visible');
+
+  ensureActx();
+  abort = new AbortController();
+  setState('STREAMING');
+  setPlayerStatus('streaming', '連線中…');
+  vizStart(); progressStart();
+
+  const replacement = document.getElementById('replacementSelect').value || null;
+
+  let url, body;
+  if (mode === 'character') {
+    const ch = document.getElementById('charSelect').value;
+    if (!ch) { alert('請選擇角色'); setState('IDLE'); return; }
+    url = API + '/tts_stream'; body = { text, character: ch };
+  } else {
+    const paths = document.getElementById('audioPath').value.trim();
+    if (!paths) { alert('請輸入音頻路徑'); setState('IDLE'); return; }
+    url = API + '/tts_url_stream';
+    body = { text, audio_paths: paths.split(',').map(s => s.trim()).filter(Boolean) };
+  }
+  if (replacement) body.replacement = replacement;
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body), signal: abort.signal,
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error || res.statusText);
+    }
+
+    const reader = res.body.getReader();
+    let sent = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (genId !== myId) return; // superseded
+      let chunk = value;
+      if (hdrLeft > 0) {
+        if (chunk.length <= hdrLeft) { hdrLeft -= chunk.length; continue; }
+        chunk = chunk.slice(hdrLeft); hdrLeft = 0;
+      }
+      if (chunk.length > 0) {
+        sent++;
+        setPlayerStatus('streaming', `生成中… 第 ${sent} 句`);
+        processPCM(chunk);
+      }
+    }
+
+    if (genId !== myId) return;
+    // Generation done — audio may still be playing
+    setState('PLAYING');
+    document.getElementById('timeTotal').textContent = fmtTime(totalSamples / SR);
+    setPlayerStatus('playing', `生成完成，播放中（${sent} 句）`);
+
+  } catch (e) {
+    if (genId !== myId) return;
+    if (e.name === 'AbortError') {
+      setState(pcmChunks.length > 0 ? 'STOPPED' : 'IDLE');
+      setPlayerStatus('', '已中斷');
+    } else {
+      setState(pcmChunks.length > 0 ? 'STOPPED' : 'IDLE');
+      setPlayerStatus('error', '錯誤：' + e.message);
+      console.error(e);
+    }
+  } finally {
+    if (genId === myId) { abort = null; vizStop(); }
+  }
+}
+
+/* ── Player controls ─────────────────────────── */
+function playerPlayPause() {
+  if (!actx) return;
+  if (appState === 'PAUSED') {
+    actx.resume();
+    // Return to previous active state (streaming or playing)
+    setState(_pausedFrom || 'PLAYING');
+    setPlayerStatus(_pausedFrom === 'STREAMING' ? 'streaming' : 'playing',
+      _pausedFrom === 'STREAMING' ? '生成中（已恢復）' : '播放中');
+    vizStart(); progressStart();
+  } else if (appState === 'PLAYING' || appState === 'STREAMING') {
+    _pausedFrom = appState;
+    actx.suspend();
+    setState('PAUSED');
+    setPlayerStatus('paused', '已暫停');
+    vizStop(); progressStop();
+  }
+}
+let _pausedFrom = null;
+
+function playerStop() {
+  if (abort) { abort.abort(); abort = null; }  // also kills streaming if active
+  closeActx();
+  progressStop(); vizStop();
+  vizBuf = new Float32Array(400); vizHead = 0; vizDraw();
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('timeCurrent').textContent = '0:00';
+  setState(pcmChunks.length > 0 ? 'STOPPED' : 'IDLE');
+  setPlayerStatus('', '已停止');
+}
+
+function playerReplay() {
+  if (!pcmChunks.length) return;
+  closeActx();
+  ensureActx();
+  vizBuf = new Float32Array(400); vizHead = 0;
+
+  // Flatten all PCM
+  const all = new Int16Array(totalSamples);
+  let off = 0;
+  for (const c of pcmChunks) { all.set(c, off); off += c.length; }
+  const f32 = new Float32Array(all.length);
+  for (let i = 0; i < all.length; i++) f32[i] = all[i] / 32767.0;
+  vizPush(f32);
+
+  const buf = actx.createBuffer(1, f32.length, SR);
+  buf.getChannelData(0).set(f32);
+  const src = actx.createBufferSource();
+  src.buffer = buf; src.connect(actx.destination);
+  const t = actx.currentTime + 0.06;
+  audioStartTime = t; src.start(t); nextTime = t + buf.duration;
+  lastSrc = src;
+  src.onended = () => {
+    if (src !== lastSrc) return;
+    lastSrc = null;
+    if (appState === 'PLAYING') {
+      setState('DONE');
+      setPlayerStatus('done', '播放完畢');
+      document.getElementById('progressFill').style.width = '100%';
+      const d = fmtTime(totalSamples / SR);
+      document.getElementById('timeCurrent').textContent = d;
+      document.getElementById('timeTotal').textContent   = d;
+    }
+  };
+
+  setState('PLAYING');
+  setPlayerStatus('playing', '重新播放中');
+  document.getElementById('timeTotal').textContent = fmtTime(totalSamples / SR);
+  vizStart(); progressStart();
+}
+
+/* ── Download ────────────────────────────────── */
+function downloadAudio() {
+  if (!pcmChunks.length) return;
+  const combined = new Int16Array(totalSamples);
+  let off = 0;
+  for (const c of pcmChunks) { combined.set(c, off); off += c.length; }
+  const bytes = combined.byteLength;
+  const wb = new ArrayBuffer(44 + bytes);
+  const dv = new DataView(wb);
+  const ws = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+  ws(0,'RIFF'); dv.setUint32(4, 36 + bytes, true);
+  ws(8,'WAVE'); ws(12,'fmt ');
+  dv.setUint32(16,16,true); dv.setUint16(20,1,true); dv.setUint16(22,1,true);
+  dv.setUint32(24,SR,true); dv.setUint32(28,SR*2,true);
+  dv.setUint16(32,2,true);  dv.setUint16(34,16,true);
+  ws(36,'data'); dv.setUint32(40, bytes, true);
+  new Uint8Array(wb, 44).set(new Uint8Array(combined.buffer));
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([wb], { type: 'audio/wav' })),
+    download: 'indextts_output.wav',
+  });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+/* ── Init ────────────────────────────────────── */
+loadVoices();
+loadReplacementSets();
+setState('IDLE');
+vizDraw();
+progressLoop(); // keep time display refreshed
+</script>
+</body>
+</html>

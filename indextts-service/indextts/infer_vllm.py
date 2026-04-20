@@ -1,6 +1,7 @@
 import os
 import re
 import time
+import asyncio
 from subprocess import CalledProcessError
 import traceback
 from typing import List
@@ -137,7 +138,9 @@ class IndexTTS:
         print(">> bpe model loaded from:", self.bpe_path)
 
         self.speaker_dict = {}
-    
+        self.conditioning_cache = {}
+        self.bigvgan_lock = asyncio.Lock()
+
     def remove_long_silence(self, codes: list, latent: torch.Tensor, max_consecutive=15, silent_token=52):
         assert latent.dim() == 3 and latent.size(0) == 1, "Latent should be (1, seq_len, dim)"
         seq_len, dim = latent.size(1), latent.size(2)
@@ -175,35 +178,40 @@ class IndexTTS:
         print(">> start inference...")
         start_time = time.perf_counter()
 
-        auto_conditioning = []
-        for ap_ in audio_prompt:
-            audio, sr = torchaudio.load(ap_)
-            audio = torch.mean(audio, dim=0, keepdim=True)
-            if audio.shape[0] > 1:
-                audio = audio[0].unsqueeze(0)
-            audio = torchaudio.transforms.Resample(sr, 24000)(audio)
-            cond_mel = MelSpectrogramFeatures()(audio).to(self.device)
-            # cond_mel_frame = cond_mel.shape[-1]
-            auto_conditioning.append(cond_mel)
+        abs_prompts = tuple(sorted([os.path.abspath(p) for p in audio_prompt]))
+        if abs_prompts in self.conditioning_cache:
+            auto_conditioning, speech_conditioning_latent = self.conditioning_cache[abs_prompts]
+            print(">> conditioning cache hit")
+        else:
+            auto_conditioning = []
+            for ap_ in audio_prompt:
+                audio, sr = torchaudio.load(ap_)
+                audio = torch.mean(audio, dim=0, keepdim=True)
+                if audio.shape[0] > 1:
+                    audio = audio[0].unsqueeze(0)
+                audio = torchaudio.transforms.Resample(sr, 24000)(audio)
+                cond_mel = MelSpectrogramFeatures()(audio).to(self.device)
+                auto_conditioning.append(cond_mel)
+
+            speech_conditioning_latent = []
+            for cond_mel in auto_conditioning:
+                speech_conditioning_latent_ = self.gpt.get_conditioning(
+                    cond_mel,
+                    torch.tensor([cond_mel.shape[-1]], device=self.device)
+                )
+                speech_conditioning_latent.append(speech_conditioning_latent_)
+            speech_conditioning_latent = torch.stack(speech_conditioning_latent).sum(dim=0)
+            speech_conditioning_latent = speech_conditioning_latent / len(auto_conditioning)
+
+            if len(self.conditioning_cache) < 50:
+                self.conditioning_cache[abs_prompts] = (auto_conditioning, speech_conditioning_latent)
 
         text_tokens_list = self.tokenizer.tokenize(text)
         sentences = self.tokenizer.split_sentences(text_tokens_list)
         sampling_rate = 24000
-        # lang = "EN"
-        # lang = "ZH"
         wavs = []
         gpt_gen_time = 0
         bigvgan_time = 0
-
-        speech_conditioning_latent = []
-        for cond_mel in auto_conditioning:
-            speech_conditioning_latent_ = self.gpt.get_conditioning(
-                cond_mel,  # .half()
-                torch.tensor([cond_mel.shape[-1]], device=self.device)
-            )
-            speech_conditioning_latent.append(speech_conditioning_latent_)
-        speech_conditioning_latent = torch.stack(speech_conditioning_latent).sum(dim=0)
-        speech_conditioning_latent = speech_conditioning_latent / len(auto_conditioning)
 
         for sent in sentences:
             text_tokens = self.tokenizer.convert_tokens_to_ids(sent)
@@ -350,6 +358,95 @@ class IndexTTS:
         wav_data = trim_and_pad_silence(wav_data)
         return (sampling_rate, wav_data)
     
+    async def infer_stream(self, audio_prompt: List[str], text, seed=None):
+        """Async generator: yields raw int16 numpy PCM chunks (16kHz mono) per sentence."""
+        abs_prompts = tuple(sorted([os.path.abspath(p) for p in audio_prompt]))
+        if abs_prompts in self.conditioning_cache:
+            auto_conditioning, speech_conditioning_latent = self.conditioning_cache[abs_prompts]
+        else:
+            auto_conditioning = []
+            for ap_ in audio_prompt:
+                audio, sr = torchaudio.load(ap_)
+                audio = torch.mean(audio, dim=0, keepdim=True)
+                audio = torchaudio.transforms.Resample(sr, 24000)(audio)
+                cond_mel = MelSpectrogramFeatures()(audio).to(self.device)
+                auto_conditioning.append(cond_mel)
+            speech_conditioning_latent = []
+            for cond_mel in auto_conditioning:
+                speech_conditioning_latent_ = self.gpt.get_conditioning(
+                    cond_mel, torch.tensor([cond_mel.shape[-1]], device=self.device)
+                )
+                speech_conditioning_latent.append(speech_conditioning_latent_)
+            speech_conditioning_latent = torch.stack(speech_conditioning_latent).sum(dim=0) / len(auto_conditioning)
+            if len(self.conditioning_cache) < 50:
+                self.conditioning_cache[abs_prompts] = (auto_conditioning, speech_conditioning_latent)
+
+        text_tokens_list = self.tokenizer.tokenize(text)
+        sentences = self.tokenizer.split_sentences(text_tokens_list)
+
+        for i, sent in enumerate(sentences):
+            text_tokens = torch.tensor(self.tokenizer.convert_tokens_to_ids(sent), dtype=torch.int32, device=self.device).unsqueeze(0)
+            with torch.no_grad():
+                self.gpt.sampling_params.seed = int(seed) if seed is not None else None
+                codes, _ = await self.gpt.inference_speech(speech_conditioning_latent, text_tokens)
+                codes = torch.tensor(codes, dtype=torch.long, device=self.device).unsqueeze(0)
+                latent = self.gpt(speech_conditioning_latent, text_tokens,
+                                torch.tensor([text_tokens.shape[-1]], device=text_tokens.device), codes,
+                                torch.tensor([codes.shape[-1]], device=codes.device) * self.gpt.mel_length_compression,
+                                cond_mel_lengths=torch.tensor([speech_conditioning_latent.shape[-1]], device=text_tokens.device),
+                                return_latent=True, clip_inputs=False)
+                async with self.bigvgan_lock:
+                    def run_bigvgan():
+                        with torch.no_grad():
+                            v, _ = self.bigvgan(latent, [ap_.transpose(1, 2) for ap_ in auto_conditioning])
+                            v = torch.clamp(32767 * v.squeeze(1), -32767.0, 32767.0)
+                            return v.cpu()
+                    wav = await asyncio.to_thread(run_bigvgan)
+
+            is_last = (i == len(sentences) - 1)
+            wav_data = wav.type(torch.int16).numpy().T
+            if is_last:
+                wav_data = trim_and_pad_silence(wav_data)
+            wav_t = torch.from_numpy(wav_data.T).float() / 32767.0
+            wav_16k = torchaudio.functional.resample(wav_t, 24000, 16000)
+            yield (wav_16k.clamp(-1.0, 1.0) * 32767.0).short().numpy().T
+
+    async def infer_with_ref_audio_embed_stream(self, speaker: str, text):
+        """Async generator: yields raw int16 numpy PCM chunks (16kHz mono) per sentence."""
+        if speaker not in self.speaker_dict:
+            raise Exception(f"Speaker {speaker} not found")
+        auto_conditioning = self.speaker_dict[speaker]["auto_conditioning"]
+        speech_conditioning_latent = self.speaker_dict[speaker]["speech_conditioning_latent"]
+
+        text_tokens_list = self.tokenizer.tokenize(text)
+        sentences = self.tokenizer.split_sentences(text_tokens_list)
+
+        for i, sent in enumerate(sentences):
+            text_tokens = torch.tensor(self.tokenizer.convert_tokens_to_ids(sent), dtype=torch.int32, device=self.device).unsqueeze(0)
+            with torch.no_grad():
+                codes, _ = await self.gpt.inference_speech(speech_conditioning_latent, text_tokens)
+                codes = torch.tensor(codes, dtype=torch.long, device=self.device).unsqueeze(0)
+                latent = self.gpt(speech_conditioning_latent, text_tokens,
+                                torch.tensor([text_tokens.shape[-1]], device=text_tokens.device), codes,
+                                torch.tensor([codes.shape[-1]], device=codes.device) * self.gpt.mel_length_compression,
+                                cond_mel_lengths=torch.tensor([speech_conditioning_latent.shape[-1]], device=text_tokens.device),
+                                return_latent=True, clip_inputs=False)
+                async with self.bigvgan_lock:
+                    def run_bigvgan():
+                        with torch.no_grad():
+                            v, _ = self.bigvgan(latent, [ap_.transpose(1, 2) for ap_ in auto_conditioning])
+                            v = torch.clamp(32767 * v.squeeze(1), -32767.0, 32767.0)
+                            return v.cpu()
+                    wav = await asyncio.to_thread(run_bigvgan)
+
+            is_last = (i == len(sentences) - 1)
+            wav_data = wav.type(torch.int16).numpy().T
+            if is_last:
+                wav_data = trim_and_pad_silence(wav_data)
+            wav_t = torch.from_numpy(wav_data.T).float() / 32767.0
+            wav_16k = torchaudio.functional.resample(wav_t, 24000, 16000)
+            yield (wav_16k.clamp(-1.0, 1.0) * 32767.0).short().numpy().T
+
     @torch.no_grad()
     def registry_speaker(self, speaker: str, audio_paths: List[str]):
         auto_conditioning = []

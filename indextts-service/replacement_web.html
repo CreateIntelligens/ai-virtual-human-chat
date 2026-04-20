@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>替換規則管理 · Admin</title>
+<style>
+  html { zoom: 1.5; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root[data-theme="dark"] {
+    --bg: #141416;
+    --surface: #1c1c20;
+    --surface2: #26262c;
+    --border: rgba(255,255,255,0.1);
+    --border-hi: rgba(255,255,255,0.18);
+    --text: #f0f0f2;
+    --text-m: #8a8a95;
+    --text-d: #56565f;
+    --btn-p-bg: #fafafa;
+    --btn-p-text: #09090b;
+    --btn-p-hover: #e4e4e7;
+    --danger: #ef4444;
+    --danger-dim: rgba(239,68,68,0.1);
+    --success: #22c55e;
+    --warn: #eab308;
+    --code-pat: #a78bfa;
+    --code-rep: #34d399;
+    --shadow: 0 4px 24px rgba(0,0,0,0.6);
+    --shadow-s: 0 1px 6px rgba(0,0,0,0.4);
+  }
+  :root[data-theme="light"] {
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --surface2: #f4f4f5;
+    --border: rgba(0,0,0,0.08);
+    --border-hi: rgba(0,0,0,0.14);
+    --text: #09090b;
+    --text-m: #71717a;
+    --text-d: #a1a1aa;
+    --btn-p-bg: #09090b;
+    --btn-p-text: #fafafa;
+    --btn-p-hover: #18181b;
+    --danger: #dc2626;
+    --danger-dim: rgba(220,38,38,0.08);
+    --success: #16a34a;
+    --warn: #ca8a04;
+    --code-pat: #7c3aed;
+    --code-rep: #15803d;
+    --shadow: 0 4px 24px rgba(0,0,0,0.08);
+    --shadow-s: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px; min-height: 100vh;
+    padding: 28px 16px 72px;
+    transition: background .25s, color .25s;
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; }
+
+  /* ── Header ── */
+  .hd {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px; gap: 12px;
+    padding-bottom: 20px; border-bottom: 1px solid var(--border);
+  }
+  .hd-left { display: flex; align-items: center; gap: 12px; }
+  .hd-title { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+  .hd-sub   { font-size: 12px; color: var(--text-m); margin-top: 2px; }
+  .admin-badge {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; padding: 3px 8px; border-radius: 4px;
+    background: var(--surface2); color: var(--text-m);
+    border: 1px solid var(--border-hi);
+  }
+  .theme-btn {
+    background: transparent; border: 1px solid var(--border-hi);
+    border-radius: 8px; padding: 7px 11px; cursor: pointer;
+    font-size: 15px; line-height: 1; transition: all .15s; color: var(--text);
+  }
+  .theme-btn:hover { background: var(--surface2); }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 7px 14px; border-radius: 7px;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    border: none; transition: all .15s; white-space: nowrap; font-family: inherit;
+  }
+  .btn-p { background: var(--btn-p-bg); color: var(--btn-p-text); }
+  .btn-p:hover { background: var(--btn-p-hover); }
+  .btn-g { background: transparent; color: var(--text-m); border: 1px solid var(--border-hi); }
+  .btn-g:hover { background: var(--surface2); color: var(--text); border-color: var(--text-d); }
+  .btn-d { background: var(--danger-dim); color: var(--danger); border: 1px solid transparent; }
+  .btn-d:hover { background: var(--danger); color: #fff; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 5px; }
+  .btn-g.bnd-active { background: var(--btn-p-bg); color: var(--btn-p-text); border-color: transparent; }
+  .btn:disabled { opacity: .35; cursor: not-allowed; }
+
+  /* ── Card / Panel ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; margin-bottom: 12px;
+  }
+  .card-hd {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-label { font-size: 11px; font-weight: 600; color: var(--text-m); letter-spacing: .05em; text-transform: uppercase; }
+  .card-body  { padding: 14px 16px; }
+
+  /* ── Chips ── */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 11px; border-radius: 6px; cursor: pointer;
+    background: var(--surface2); border: 1px solid var(--border-hi);
+    font-size: 12px; font-weight: 500; color: var(--text-m);
+    transition: all .15s; user-select: none;
+  }
+  .chip:hover { background: var(--btn-p-bg); color: var(--btn-p-text); border-color: transparent; }
+  .chip .cn {
+    font-size: 10px; font-weight: 600;
+    background: rgba(128,128,128,.15); padding: 1px 6px; border-radius: 4px;
+    transition: all .15s;
+  }
+  .chip:hover .cn { background: rgba(128,128,128,.25); }
+  .chips-empty { font-size: 12px; color: var(--text-d); }
+
+  /* ── Search bar ── */
+  .sbar {
+    display: flex; gap: 8px; align-items: center;
+    background: var(--surface); border: 1px solid var(--border-hi);
+    border-radius: 10px; padding: 8px 14px; margin-bottom: 12px;
+    transition: border-color .15s;
+  }
+  .sbar:focus-within { border-color: var(--text-d); }
+  .sbar-label { color: var(--text-m); font-size: 12px; white-space: nowrap; }
+  .sbar input {
+    flex: 1; background: transparent; border: none;
+    color: var(--text); font-size: 14px; outline: none; font-family: inherit;
+  }
+  .sbar input::placeholder { color: var(--text-d); }
+
+  /* ── Stats row ── */
+  .srow {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px; gap: 8px; flex-wrap: wrap;
+  }
+  .srow-left { display: flex; align-items: center; gap: 8px; }
+  .srow-name  { font-size: 15px; font-weight: 700; }
+  .srow-count {
+    font-size: 11px; color: var(--text-m);
+    background: var(--surface2); border: 1px solid var(--border-hi);
+    padding: 2px 8px; border-radius: 4px;
+  }
+  .srow-count span { color: var(--text); font-weight: 600; }
+  .ag { display: flex; gap: 5px; flex-wrap: wrap; }
+
+  /* ── Table ── */
+  .tbl-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden; margin-bottom: 12px;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead { background: var(--surface2); }
+  th {
+    text-align: left; padding: 10px 14px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--text-m);
+    border-bottom: 1px solid var(--border);
+  }
+  td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--surface2); }
+
+  .t-num { color: var(--text-d); font-size: 11px; font-weight: 600; width: 36px; }
+  .t-pat { font-family: 'Fira Code','Cascadia Code',monospace; font-size: 12.5px; color: var(--code-pat); max-width: 230px; word-break: break-all; }
+  .t-arr { color: var(--text-d); font-size: 14px; text-align: center; width: 26px; }
+  .t-rep { font-family: 'Fira Code','Cascadia Code',monospace; font-size: 12.5px; color: var(--code-rep); max-width: 180px; word-break: break-all; }
+  .badge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+  .b-rx { background: rgba(234,179,8,.1);  color: var(--warn);    border: 1px solid rgba(234,179,8,.2); }
+  .b-pl { background: rgba(34,197,94,.08); color: var(--success); border: 1px solid rgba(34,197,94,.18); }
+  .b-fl { background: var(--surface2); color: var(--text-m); border: 1px solid var(--border-hi); margin: 1px 2px; }
+  .acts { display: flex; gap: 5px; }
+
+  /* ── Empty ── */
+  .empty {
+    text-align: center; padding: 52px 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; margin-bottom: 12px;
+  }
+  .empty-ico { font-size: 36px; margin-bottom: 10px; opacity: .4; }
+  .empty p   { font-size: 13px; color: var(--text-m); }
+  .empty p+p { margin-top: 4px; font-size: 12px; color: var(--text-d); }
+
+  /* ── Panels (import / clone) ── */
+  .panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; margin-bottom: 12px; overflow: hidden;
+  }
+  .panel-hd {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  }
+  .panel-title { font-size: 13px; font-weight: 600; }
+  .panel-desc  { font-size: 12px; color: var(--text-m); margin-top: 3px; }
+  .panel-body  { padding: 16px; }
+
+  .import-json-area textarea {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border-hi);
+    border-radius: 8px; padding: 10px 12px;
+    color: var(--text); font-family: 'Fira Code',monospace; font-size: 12px;
+    outline: none; resize: vertical; min-height: 130px;
+    transition: border-color .15s;
+  }
+  .import-json-area textarea:focus { border-color: var(--text-d); }
+
+  .upload-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  }
+  .upload-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 12px; border-radius: 6px; cursor: pointer;
+    font-size: 12px; font-weight: 500;
+    background: var(--surface2); border: 1px solid var(--border-hi);
+    color: var(--text-m); transition: all .15s; user-select: none;
+  }
+  .upload-btn:hover { background: var(--btn-p-bg); color: var(--btn-p-text); border-color: transparent; }
+  .upload-name { font-size: 12px; color: var(--text-m); }
+
+  .panel-acts { display: flex; gap: 8px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
+  .panel-hint { font-size: 11px; color: var(--text-d); margin-left: auto; }
+
+  .clone-row { display: flex; gap: 8px; align-items: center; }
+  .clone-inp {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border-hi);
+    border-radius: 7px; padding: 8px 12px;
+    color: var(--text); font-size: 14px; outline: none; font-family: inherit;
+    transition: border-color .15s;
+  }
+  .clone-inp:focus { border-color: var(--text-d); }
+
+  /* ── Flags ── */
+  .flags-grp { display: flex; flex-direction: column; gap: 5px; }
+  .flag-opt {
+    display: flex; align-items: center; gap: 9px; padding: 8px 12px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 7px; cursor: pointer; transition: border-color .15s; user-select: none;
+  }
+  .flag-opt:hover { border-color: var(--text-d); }
+  .flag-opt input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--text); cursor: pointer; flex-shrink: 0; }
+  .flag-nm { font-size: 12px; color: var(--text); font-weight: 600; }
+  .flag-dc { font-size: 11px; color: var(--text-m); margin-left: auto; }
+  .tog-row {
+    display: flex; align-items: center; gap: 9px; padding: 9px 12px;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 7px;
+  }
+  .tog-row label { font-size: 12px; color: var(--text); cursor: pointer; user-select: none; }
+  input[type="checkbox"] { accent-color: var(--text); cursor: pointer; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px;
+    padding: 10px 18px; border-radius: 9px;
+    font-size: 13px; font-weight: 600;
+    z-index: 9999;
+    transform: translateY(80px); opacity: 0;
+    transition: all .25s cubic-bezier(.34,1.56,.64,1);
+    pointer-events: none;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.success { background: var(--surface2); color: var(--success); border: 1px solid rgba(34,197,94,.25); box-shadow: var(--shadow-s); }
+  #toast.error   { background: var(--surface2); color: var(--danger);  border: 1px solid rgba(239,68,68,.25);  box-shadow: var(--shadow-s); }
+
+  /* ── Modal ── */
+  .mbk {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.7); backdrop-filter: blur(4px);
+    z-index: 100; display: none;
+    align-items: flex-start; justify-content: center;
+    overflow-y: auto; padding: 32px 16px;
+  }
+  .mbk.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border-hi);
+    border-radius: 14px; padding: 24px; width: 560px; max-width: 95vw;
+    box-shadow: var(--shadow);
+    animation: mIn .2s ease;
+    flex-shrink: 0;
+  }
+  @keyframes mIn { from { transform: scale(.96) translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .m-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .m-hd h2 { font-size: 15px; font-weight: 700; }
+  .f-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .fg { display: flex; flex-direction: column; gap: 5px; }
+  .fg.full { grid-column: 1 / -1; }
+  .fg label { font-size: 11px; font-weight: 600; color: var(--text-m); letter-spacing: .04em; }
+  .fg input, .fg textarea {
+    background: var(--surface2); border: 1px solid var(--border-hi);
+    border-radius: 7px; padding: 9px 11px;
+    color: var(--text); font-size: 13px; outline: none;
+    font-family: inherit; transition: border-color .15s;
+  }
+  .fg input:focus, .fg textarea:focus { border-color: var(--text-d); }
+  .fg textarea { resize: vertical; min-height: 68px; }
+  .p-hint { font-size: 10px; color: var(--text-d); }
+  .rx-hint {
+    font-size: 11px; color: var(--text-m);
+    background: var(--surface2); border: 1px solid var(--border-hi);
+    border-radius: 6px; padding: 7px 10px; margin-top: 5px;
+  }
+  .m-acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; padding-top: 14px; border-bottom: none; border-top: 1px solid var(--border); }
+
+  /* ── TTS Preview ── */
+  .preview-card { margin-bottom: 14px; }
+  .preview-row  { display: flex; gap: 8px; align-items: flex-start; }
+  .preview-row textarea {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border-hi);
+    border-radius: 7px; padding: 9px 12px;
+    color: var(--text); font-size: 13px; font-family: inherit;
+    outline: none; resize: vertical; min-height: 60px; max-height: 140px;
+    transition: border-color .15s;
+  }
+  .preview-row textarea:focus { border-color: var(--text-d); }
+  .preview-row textarea::placeholder { color: var(--text-d); }
+  .preview-meta { font-size: 11px; color: var(--text-d); margin-top: 6px; }
+  .preview-meta span { color: var(--text-m); }
+  audio { width: 100%; margin-top: 10px; height: 32px; }
+  audio::-webkit-media-controls-panel { background: var(--surface2); }
+
+  @media (max-width: 640px) {
+    .f-grid { grid-template-columns: 1fr; }
+    .sbar   { flex-wrap: wrap; }
+    .ag     { gap: 4px; }
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/opencc-js@1.0.5/dist/umd/full.js"></script>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hd">
+    <div class="hd-left">
+      <div>
+        <div class="hd-title">替換規則管理</div>
+        <div class="hd-sub">TTS 文字替換規則 · 管理員控制台</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="admin-badge">Admin</span>
+      <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">☀️</button>
+    </div>
+  </div>
+
+  <!-- TTS Preview -->
+  <div class="card preview-card">
+    <div class="card-hd"><span class="card-label">🎵 試聽 TTS</span></div>
+    <div class="card-body">
+      <div class="preview-row">
+        <textarea id="previewText" placeholder="輸入要試聽的文字，確認替換規則是否正確生效…"></textarea>
+        <button class="btn btn-p" id="previewBtn" onclick="doPreview()" style="flex-shrink:0">▶ 試聽</button>
+      </div>
+      <div class="preview-meta">套用規則組：<span id="previewSetLabel">（尚未載入規則組）</span></div>
+      <audio id="previewAudio" controls style="display:none"></audio>
+    </div>
+  </div>
+
+  <!-- Set list -->
+  <div class="card">
+    <div class="card-hd"><span class="card-label">已建立的規則組</span></div>
+    <div class="card-body">
+      <div class="chips" id="setChips"><span class="chips-empty">載入中…</span></div>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="sbar">
+    <span class="sbar-label">規則組</span>
+    <input id="setNameInput" placeholder="輸入規則組名稱，例如：jti、default…" autocomplete="off">
+    <button class="btn btn-p btn-sm" onclick="loadRules()">載入</button>
+    <button class="btn btn-g btn-sm" onclick="showAddForm()">＋ 新增規則</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="srow" id="statsBar" style="display:none">
+    <div class="srow-left">
+      <span class="srow-name" id="statsSetName"></span>
+      <span class="srow-count">共 <span id="ruleCount">0</span> 條</span>
+    </div>
+    <div class="ag">
+      <button class="btn btn-g btn-sm" onclick="doExport()">↓ 匯出 JSON</button>
+      <button class="btn btn-g btn-sm" onclick="showBulkImport()">↑ 批次匯入</button>
+      <button class="btn btn-g btn-sm" onclick="showClone()">⧉ 複製規則組</button>
+      <button class="btn btn-d btn-sm" onclick="clearAllRules()">清空此組</button>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="tbl-wrap" id="tableWrap" style="display:none">
+    <table>
+      <thead>
+        <tr><th>#</th><th>比對 Pattern</th><th></th><th>替換結果</th><th>類型</th><th>Flags</th><th>操作</th></tr>
+      </thead>
+      <tbody id="rulesBody"></tbody>
+    </table>
+  </div>
+
+  <div id="emptyState" style="display:none">
+    <div class="empty">
+      <div class="empty-ico">📭</div>
+      <p>此規則組目前沒有規則</p>
+      <p>點擊上方「＋ 新增規則」開始建立</p>
+    </div>
+  </div>
+
+  <!-- Global rules preview (shown when viewing a non-global set) -->
+  <div id="globalSection" style="display:none">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;margin-top:4px">
+      <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-m)">全域規則 (_global_)</span>
+      <span style="font-size:11px;color:var(--text-d)">— 對所有請求先執行，廠商規則後執行（廠商優先）</span>
+      <button class="btn btn-g btn-sm" style="margin-left:auto" onclick="selectSet('_global_')">管理全域規則</button>
+    </div>
+    <div class="tbl-wrap" id="globalTableWrap" style="display:none">
+      <table>
+        <thead>
+          <tr><th>#</th><th>比對 Pattern</th><th></th><th>替換結果</th><th>類型</th><th>Flags</th></tr>
+        </thead>
+        <tbody id="globalRulesBody"></tbody>
+      </table>
+    </div>
+    <div id="globalEmpty" style="display:none">
+      <div class="empty" style="padding:20px 16px">
+        <p>尚無全域規則</p>
+      </div>
+    </div>
+  </div>
+
+
+</div>
+
+<!-- Bulk import modal -->
+<div class="mbk" id="bulkSection">
+  <div class="modal">
+    <div class="m-hd">
+      <h2>批次匯入 JSON</h2>
+      <button class="btn btn-g btn-sm" onclick="hideBulkImport()">✕</button>
+    </div>
+    <p style="font-size:12px;color:var(--text-m);margin-bottom:12px">上傳 JSON 檔或直接貼上內容，每筆需含 <code style="color:var(--text-m)">pattern</code> 與 <code style="color:var(--text-m)">replacement</code></p>
+    <div class="import-json-area">
+      <div class="upload-row">
+        <label class="upload-btn" for="jsonFileInput">📂 選擇 JSON 檔案</label>
+        <input type="file" id="jsonFileInput" accept=".json,application/json" style="display:none" onchange="onFileSelect(this)">
+        <span class="upload-name" id="uploadFileName">未選擇任何檔案</span>
+      </div>
+      <textarea id="bulkJson" placeholder='[
+  {"pattern": "ISO 9001", "replacement": "iso 九零零一", "flags": ["IGNORECASE"]},
+  {"pattern": "(?&lt;![A-Za-z])AI(?![A-Za-z])", "replacement": "ai", "flags": ["IGNORECASE"], "is_regex": true}
+]'></textarea>
+    </div>
+    <div class="m-acts" style="justify-content:space-between;align-items:center">
+      <span style="font-size:11px;color:var(--text-d)">覆蓋：清空後匯入 ｜ 合併：保留現有，僅新增不重複</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-g" onclick="hideBulkImport()">取消</button>
+        <button class="btn btn-g" onclick="doBulkImport('merge')">合併匯入</button>
+        <button class="btn btn-p" onclick="doBulkImport('overwrite')">覆蓋匯入</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Clone modal -->
+<div class="mbk" id="cloneSection">
+  <div class="modal" style="width:480px">
+    <div class="m-hd">
+      <h2>複製規則組</h2>
+      <button class="btn btn-g btn-sm" onclick="hideClone()">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--text-m);margin-bottom:14px">將「<strong id="cloneSrcLabel" style="color:var(--text)"></strong>」的所有規則複製到另一個規則組</p>
+    <input id="cloneTarget" class="clone-inp" placeholder="目標規則組名稱…" autocomplete="off"
+      style="width:100%;background:var(--surface2);border:1px solid var(--border-hi);border-radius:7px;padding:9px 12px;color:var(--text);font-size:14px;outline:none;font-family:inherit;transition:border-color .15s">
+    <div class="m-acts">
+      <button class="btn btn-g" onclick="hideClone()">取消</button>
+      <button class="btn btn-g" onclick="doClone('merge')">複製（合併）</button>
+      <button class="btn btn-p" onclick="doClone('overwrite')">複製（覆蓋）</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rule modal -->
+<div class="mbk" id="ruleModal">
+  <div class="modal">
+    <div class="m-hd">
+      <h2 id="modalTitle">新增規則</h2>
+      <button class="btn btn-g btn-sm" onclick="closeModal()">✕</button>
+    </div>
+    <input type="hidden" id="editId">
+    <div class="f-grid">
+      <div class="fg full">
+        <label>比對 Pattern <span id="patternHint" class="p-hint">— 純文字，系統自動加上安全比對</span></label>
+        <input id="fPattern" placeholder="例如：ISO 9001" autocomplete="off">
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;align-items:center">
+          <span style="font-size:10px;color:var(--text-d);align-self:center;margin-right:2px">快速邊界：</span>
+          <button type="button" class="btn btn-g btn-sm" data-bnd="cn"    onclick="wrapBoundary('cn')"    title="前後非空白/標點才比對">中文詞邊界</button>
+          <button type="button" class="btn btn-g btn-sm" data-bnd="alpha" onclick="wrapBoundary('alpha')" title="前後非英文字母才比對">英邊界</button>
+          <button type="button" class="btn btn-g btn-sm" data-bnd="en"    onclick="wrapBoundary('en')"    title="前後非英數才比對">英數邊界</button>
+          <button type="button" class="btn btn-g btn-sm" data-bnd="all"   onclick="wrapBoundary('all')"   title="前後非中英數才比對">中英數邊界</button>
+          <button type="button" class="btn btn-g btn-sm" data-bnd="wb"    onclick="wrapBoundary('wb')"    title="\\b 標準英文詞邊界">\b 詞邊界</button>
+          <button type="button" class="btn btn-d btn-sm" onclick="stripBoundary()"      title="移除目前 pattern 的邊界">✕ 移除邊界</button>
+          <button type="button" onclick="toggleBoundaryHelp()" title="查看各邊界範例說明"
+            style="width:20px;height:20px;border-radius:50%;border:1px solid var(--border-hi);background:transparent;color:var(--text-m);font-size:11px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;padding:0;line-height:1"
+            onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">?</button>
+        </div>
+        <div id="boundaryHelp" style="display:none;margin-top:8px;background:var(--surface2);border:1px solid var(--border-hi);border-radius:8px;padding:12px 14px;font-size:12px">
+          <div style="font-weight:700;margin-bottom:8px;color:var(--text-m);font-size:11px;text-transform:uppercase;letter-spacing:.05em">邊界效果說明</div>
+          <table style="width:100%;border-collapse:collapse;font-size:11px">
+            <thead>
+              <tr style="color:var(--text-m)">
+                <th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border);font-weight:600">類型</th>
+                <th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border);font-weight:600">範例 Pattern</th>
+                <th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border);font-weight:600;color:var(--success)">✓ 會命中</th>
+                <th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border);font-weight:600;color:var(--danger)">✗ 不命中</th>
+              </tr>
+            </thead>
+            <tbody id="boundaryHelpBody">
+              <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">中文詞邊界</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);font-family:monospace;color:var(--code-pat)">…血…</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--success)">「血」、 血 、血，</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--danger)">血漿、血壓</td></tr>
+              <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">英邊界</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);font-family:monospace;color:var(--code-pat)">…AI…</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--success)">AI、AI2、AI技術</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--danger)">AIKKA、TrainAI</td></tr>
+              <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">英數邊界</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);font-family:monospace;color:var(--code-pat)">…AI…</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--success)">AI、AI技術</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--danger)">AIKKA、AI2、TrainAI</td></tr>
+              <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">中英數邊界</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);font-family:monospace;color:var(--code-pat)">…AI…</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--success)">AI、（AI）</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--danger)">AIKKA、AI2、AI技術</td></tr>
+              <tr><td style="padding:5px 8px">\b 詞邊界</td><td style="padding:5px 8px;font-family:monospace;color:var(--code-pat)">…AI…</td><td style="padding:5px 8px;color:var(--success)">AI、"AI"</td><td style="padding:5px 8px;color:var(--danger)">AIKKA、AI技術（CJK不適用）</td></tr>
+            </tbody>
+          </table>
+          <div style="margin-top:8px;font-size:10px;color:var(--text-d)">※ 以 Pattern 輸入「AI」為例，套用後會依選擇的邊界自動包上 Lookahead/Lookbehind。</div>
+        </div>
+      </div>
+      <div class="fg full">
+        <label>替換結果</label>
+        <input id="fReplacement" placeholder="例如：iso 九零零一" autocomplete="off">
+      </div>
+      <div class="fg">
+        <label>Flags</label>
+        <div class="flags-grp">
+          <label class="flag-opt">
+            <input type="checkbox" name="flag" value="IGNORECASE" checked>
+            <span class="flag-nm">IGNORECASE</span>
+            <span class="flag-dc">忽略大小寫</span>
+          </label>
+          <label class="flag-opt">
+            <input type="checkbox" name="flag" value="MULTILINE">
+            <span class="flag-nm">MULTILINE</span>
+            <span class="flag-dc">多行模式</span>
+          </label>
+          <label class="flag-opt">
+            <input type="checkbox" name="flag" value="DOTALL">
+            <span class="flag-nm">DOTALL</span>
+            <span class="flag-dc">. 匹配換行</span>
+          </label>
+        </div>
+      </div>
+      <div class="fg">
+        <label>順序 order_num</label>
+        <input id="fOrder" type="number" value="0" min="0">
+        <div class="tog-row" style="margin-top:8px">
+          <input type="checkbox" id="fIsRegex" onchange="onRegexToggle(this)">
+          <label for="fIsRegex">進階模式（is_regex）</label>
+        </div>
+        <div id="regexHintBox" class="rx-hint" style="display:none">
+          開啟後 pattern 直接作為 Regex 使用，繁體字元自動轉簡體
+        </div>
+      </div>
+    </div>
+    <div class="m-acts">
+      <button class="btn btn-g" onclick="closeModal()">取消</button>
+      <button class="btn btn-p" onclick="saveRule()">儲存規則</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+let currentSet = '';
+let rules = [];
+
+async function loadSetList() {
+  try {
+    const res = await fetch('/replacements');
+    const sets = await res.json();
+    const c = document.getElementById('setChips');
+    if (!sets.length) { c.innerHTML = '<span class="chips-empty">尚無任何規則組</span>'; return; }
+    c.innerHTML = sets.map(s => {
+      const isG = s.set_name === '_global_';
+      const label = isG ? '🌐 _global_' : esc(s.set_name);
+      const style = isG ? 'border-style:dashed;' : '';
+      return `<span class="chip" onclick="selectSet('${esc(s.set_name)}')" style="${style}">
+        ${label}<span class="cn">${s.rule_count}</span>
+      </span>`;
+    }).join('');
+  } catch { document.getElementById('setChips').innerHTML = '<span class="chips-empty">無法載入</span>'; }
+}
+
+function selectSet(n) { document.getElementById('setNameInput').value = n; loadRules(); }
+
+function toggleTheme() {
+  const r = document.documentElement;
+  const next = r.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  r.setAttribute('data-theme', next);
+  document.getElementById('themeBtn').textContent = next === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem('rtw-theme', next);
+}
+(function() {
+  const s = localStorage.getItem('rtw-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', s);
+  document.getElementById('themeBtn').textContent = s === 'dark' ? '☀️' : '🌙';
+})();
+
+async function loadRules() {
+  const name = document.getElementById('setNameInput').value.trim();
+  if (!name) { toast('請輸入規則組名稱', 'error'); return; }
+  currentSet = name;
+  try {
+    const res = await fetch(`/replacements/${encodeURIComponent(name)}`);
+    rules = await res.json();
+    renderTable();
+    document.getElementById('statsBar').style.display = 'flex';
+    document.getElementById('statsSetName').textContent = name;
+    document.getElementById('previewSetLabel').textContent = name;
+    await loadGlobalRules(name);
+  } catch(e) { toast('載入失敗：' + e.message, 'error'); }
+}
+
+async function loadGlobalRules(setName) {
+  const sec = document.getElementById('globalSection');
+  if (setName === '_global_') { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  try {
+    const res = await fetch('/replacements/_global_');
+    const globalRules = await res.json();
+    const tbody = document.getElementById('globalRulesBody');
+    document.getElementById('globalTableWrap').style.display = globalRules.length ? '' : 'none';
+    document.getElementById('globalEmpty').style.display     = globalRules.length ? 'none' : '';
+    tbody.innerHTML = globalRules.map((r, i) => `
+      <tr>
+        <td class="t-num">${r.order_num ?? i}</td>
+        <td><div class="t-pat">${esc(r.pattern)}</div></td>
+        <td class="t-arr">→</td>
+        <td><div class="t-rep">${esc(r.replacement)}</div></td>
+        <td>${typeBadge(r)}</td>
+        <td>${(r.flags||[]).map(f=>`<span class="badge b-fl">${f}</span>`).join('')}</td>
+      </tr>`).join('');
+  } catch { sec.style.display = 'none'; }
+}
+
+const _CJK_P = "\uff0c\u3002\uff01\uff1f\uff1b\uff1a\u3001\uff08\uff09\u3010\u3011\u300a\u300b\u201c\u201d\u2018\u2019";
+const _BMAP = {
+  cn:    ["(?<![^\\s\\n" + _CJK_P + "])", "(?![^\\s\\n" + _CJK_P + "])"],
+  alpha: ["(?<![A-Za-z])",                 "(?![A-Za-z])"],
+  en:    ["(?<![A-Za-z0-9])",              "(?![A-Za-z0-9])"],
+  all:   ["(?<![A-Za-z0-9\\u4e00-\\u9fff])","(?![A-Za-z0-9\\u4e00-\\u9fff])"],
+  wb:    ["\\b",                           "\\b"],
+};
+const _BND_LABEL = { cn: '中文詞', alpha: '英邊界', en: '英數邊界', all: '中英數邊界', wb: '\\b' };
+
+function detectBnd(pattern) {
+  for (const [t, [p, s]] of Object.entries(_BMAP)) {
+    if (pattern.startsWith(p) && pattern.endsWith(s)) return t;
+  }
+  return null;
+}
+
+function typeBadge(r) {
+  const bnd = r.is_regex ? detectBnd(r.pattern) : null;
+  if (!r.is_regex) return `<span class="badge b-pl">純文字</span>`;
+  if (bnd) return `<span class="badge b-rx">Regex</span> <span class="badge b-fl">${_BND_LABEL[bnd]}</span>`;
+  return `<span class="badge b-rx">Regex</span>`;
+}
+
+function renderTable() {
+  const tb = document.getElementById('rulesBody');
+  document.getElementById('tableWrap').style.display  = rules.length ? '' : 'none';
+  document.getElementById('emptyState').style.display = rules.length ? 'none' : '';
+  document.getElementById('ruleCount').textContent = rules.length;
+  tb.innerHTML = rules.map((r, i) => `
+    <tr>
+      <td class="t-num">${r.order_num ?? i}</td>
+      <td><div class="t-pat">${esc(r.pattern)}</div></td>
+      <td class="t-arr">→</td>
+      <td><div class="t-rep">${esc(r.replacement)}</div></td>
+      <td>${typeBadge(r)}</td>
+      <td>${(r.flags||[]).map(f=>`<span class="badge b-fl">${f}</span>`).join('')}</td>
+      <td><div class="acts">
+        <button class="btn btn-g btn-sm" onclick="openEdit(${r.id})">編輯</button>
+        <button class="btn btn-d btn-sm" onclick="deleteRule(${r.id})">刪除</button>
+      </div></td>
+    </tr>`).join('');
+}
+
+function showAddForm() {
+  if (!currentSet) { toast('請先載入規則組', 'error'); return; }
+  document.getElementById('modalTitle').textContent = '新增規則';
+  document.getElementById('editId').value = '';
+  document.getElementById('fPattern').value = '';
+  document.getElementById('fReplacement').value = '';
+  document.getElementById('fOrder').value = rules.length;
+  document.getElementById('fIsRegex').checked = false;
+  setFlags(['IGNORECASE']);
+  onRegexToggle(document.getElementById('fIsRegex'));
+  setBndActive(null);
+  document.getElementById('boundaryHelp').style.display = 'none';
+  document.getElementById('ruleModal').classList.add('open');
+  setTimeout(() => document.getElementById('fPattern').focus(), 80);
+}
+
+function openEdit(id) {
+  const r = rules.find(x => x.id === id); if (!r) return;
+  document.getElementById('modalTitle').textContent = '編輯規則';
+  document.getElementById('editId').value = id;
+  document.getElementById('fPattern').value = r.pattern;
+  document.getElementById('fReplacement').value = r.replacement;
+  document.getElementById('fOrder').value = r.order_num ?? 0;
+  document.getElementById('fIsRegex').checked = !!r.is_regex;
+  setFlags(r.flags || []);
+  onRegexToggle(document.getElementById('fIsRegex'));
+  // 偵測並高亮當前邊界
+  setBndActive(detectBnd(r.pattern));
+  document.getElementById('boundaryHelp').style.display = 'none';
+  document.getElementById('ruleModal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('ruleModal').classList.remove('open'); }
+function setFlags(sel) { document.querySelectorAll('input[name="flag"]').forEach(c => { c.checked = sel.includes(c.value); }); }
+function getFlags()    { return Array.from(document.querySelectorAll('input[name="flag"]:checked')).map(c => c.value); }
+
+function onRegexToggle(cb) {
+  const h = document.getElementById('patternHint');
+  const b = document.getElementById('regexHintBox');
+  h.textContent = cb.checked ? '— 進階：直接輸入完整 Regex' : '— 純文字，系統自動加上安全比對';
+  b.style.display = cb.checked ? '' : 'none';
+}
+
+function toggleBoundaryHelp() {
+  const el = document.getElementById('boundaryHelp');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function stripBoundary() {
+  const input = document.getElementById('fPattern');
+  const raw = input.value.trim();
+  if (!raw) return;
+  const CJK_PUNCT = "\uff0c\u3002\uff01\uff1f\uff1b\uff1a\u3001\uff08\uff09\u3010\u3011\u300a\u300b\u201c\u201d\u2018\u2019";
+  const B = [
+    ["(?<![^\\s\\n" + CJK_PUNCT + "])", "(?![^\\s\\n" + CJK_PUNCT + "])"],
+    ["(?<![A-Za-z])",                    "(?![A-Za-z])"],
+    ["(?<![A-Za-z0-9])",                 "(?![A-Za-z0-9])"],
+    ["(?<![A-Za-z0-9\\u4e00-\\u9fff])",  "(?![A-Za-z0-9\\u4e00-\\u9fff])"],
+    ["\\b",                              "\\b"],
+  ];
+  for (const [p, s] of B) {
+    if (raw.startsWith(p) && raw.endsWith(s)) {
+      input.value = raw.slice(p.length, raw.length - s.length);
+      setBndActive(null);
+      toast('邊界已移除', 'success');
+      return;
+    }
+  }
+  toast('未偵測到已知邊界', 'error');
+}
+
+
+
+function wrapBoundary(type) {
+  const input = document.getElementById('fPattern');
+  const raw = input.value.trim();
+  if (!raw) { toast('請先輸入 Pattern 內容', 'error'); return; }
+
+  // 中文詞邊界：前後不是中文標點/空白以外的字元才比對
+  const CJK_PUNCT = "\uff0c\u3002\uff01\uff1f\uff1b\uff1a\u3001\uff08\uff09\u3010\u3011\u300a\u300b\u201c\u201d\u2018\u2019";
+  const CN_PRE  = "(?<![^\\s\\n" + CJK_PUNCT + "])";
+  const CN_POST = "(?![^\\s\\n"  + CJK_PUNCT + "])";
+  const BOUNDARIES = {
+    cn:    [CN_PRE,                             CN_POST],
+    alpha: ["(?<![A-Za-z])",                    "(?![A-Za-z])"],
+    en:    ["(?<![A-Za-z0-9])",                 "(?![A-Za-z0-9])"],
+    all:   ["(?<![A-Za-z0-9\\u4e00-\\u9fff])",  "(?![A-Za-z0-9\\u4e00-\\u9fff])"],
+    wb:    ["\\b",                              "\\b"],
+  };
+  const [pre, post] = BOUNDARIES[type];
+
+  // 若已有邊界則先剝掉再重包，避免重複套用
+  let inner = raw;
+  for (const [p, s] of Object.values(BOUNDARIES)) {
+    if (inner.startsWith(p) && inner.endsWith(s)) {
+      inner = inner.slice(p.length, inner.length - s.length);
+      break;
+    }
+  }
+
+  input.value = pre + inner + post;
+  setBndActive(type);
+
+  // 自動開啟 is_regex
+  const cb = document.getElementById('fIsRegex');
+  cb.checked = true;
+  onRegexToggle(cb);
+  toast('已套用邊界並開啟 Regex 模式', 'success');
+}
+
+function setBndActive(type) {
+  document.querySelectorAll('[data-bnd]').forEach(b => {
+    b.classList.toggle('bnd-active', b.dataset.bnd === type);
+  });
+}
+
+async function saveRule() {
+  const id = document.getElementById('editId').value;
+  const body = {
+    pattern:     document.getElementById('fPattern').value.trim(),
+    replacement: document.getElementById('fReplacement').value.trim(),
+    flags:       getFlags(),
+    is_regex:    document.getElementById('fIsRegex').checked,
+    order_num:   parseInt(document.getElementById('fOrder').value) || 0,
+  };
+  if (!body.pattern) { toast('Pattern 不能為空', 'error'); return; }
+  try {
+    const url = id ? `/replacements/${encodeURIComponent(currentSet)}/${id}` : `/replacements/${encodeURIComponent(currentSet)}`;
+    const res = await fetch(url, { method: id ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(await res.text());
+    toast(id ? '規則已更新' : '規則已新增', 'success');
+    closeModal(); loadRules();
+  } catch(e) { toast('儲存失敗：' + e.message, 'error'); }
+}
+
+async function deleteRule(id) {
+  if (!confirm('確定要刪除這條規則？')) return;
+  try {
+    const res = await fetch(`/replacements/${encodeURIComponent(currentSet)}/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(await res.text());
+    toast('已刪除', 'success'); loadRules();
+  } catch(e) { toast('刪除失敗：' + e.message, 'error'); }
+}
+
+async function clearAllRules() {
+  if (!confirm(`確定要清空「${currentSet}」的所有規則？`)) return;
+  try {
+    const res = await fetch(`/replacements/${encodeURIComponent(currentSet)}/bulk`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: '[]' });
+    if (!res.ok) throw new Error(await res.text());
+    toast('已清空', 'success'); loadRules();
+  } catch(e) { toast('操作失敗：' + e.message, 'error'); }
+}
+
+function doExport() {
+  if (!currentSet) { toast('請先載入規則組', 'error'); return; }
+  window.location.href = `/replacements/${encodeURIComponent(currentSet)}/export`;
+}
+
+function showBulkImport() { document.getElementById('bulkSection').classList.add('open'); }
+function hideBulkImport() {
+  document.getElementById('bulkSection').classList.remove('open');
+  document.getElementById('uploadFileName').textContent = '未選擇任何檔案';
+  document.getElementById('bulkJson').value = '';
+}
+
+function onFileSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('uploadFileName').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('bulkJson').value = e.target.result;
+    toast('檔案已載入，確認後點擊匯入', 'success');
+  };
+  reader.onerror = () => toast('讀取檔案失敗', 'error');
+  reader.readAsText(file, 'utf-8');
+  input.value = '';
+}
+
+async function doBulkImport(mode = 'overwrite') {
+  let data;
+  try { data = JSON.parse(document.getElementById('bulkJson').value); }
+  catch(e) { toast('JSON 格式錯誤：' + e.message, 'error'); return; }
+  if (!Array.isArray(data)) { toast('必須是 JSON 陣列', 'error'); return; }
+  try {
+    const res = await fetch(`/replacements/${encodeURIComponent(currentSet)}/bulk?mode=${mode}`, {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const r = await res.json();
+    toast(`${mode==='merge'?'合併':'覆蓋'}匯入 ${r.imported} 條規則`, 'success');
+    hideBulkImport();
+    loadRules();
+  } catch(e) { toast('匯入失敗：' + e.message, 'error'); }
+}
+
+function showClone() {
+  if (!currentSet) { toast('請先載入規則組', 'error'); return; }
+  document.getElementById('cloneSrcLabel').textContent = currentSet;
+  document.getElementById('cloneTarget').value = '';
+  document.getElementById('cloneSection').classList.add('open');
+  setTimeout(() => document.getElementById('cloneTarget').focus(), 80);
+}
+function hideClone() { document.getElementById('cloneSection').classList.remove('open'); }
+
+async function doClone(mode = 'overwrite') {
+  const target = document.getElementById('cloneTarget').value.trim();
+  if (!target) { toast('請輸入目標規則組名稱', 'error'); return; }
+  if (target === currentSet) { toast('目標不能與來源相同', 'error'); return; }
+  try {
+    const res = await fetch(`/replacements/${encodeURIComponent(target)}/clone/${encodeURIComponent(currentSet)}?mode=${mode}`, { method: 'POST' });
+    if (!res.ok) throw new Error(await res.text());
+    const r = await res.json();
+    toast(`已複製 ${r.cloned} 條規則到「${target}」`, 'success');
+    hideClone(); loadSetList();
+  } catch(e) { toast('複製失敗：' + e.message, 'error'); }
+}
+
+let _t2s = null;
+let _previewCtx = null;
+
+async function toSimplified(text) {
+  try {
+    if (!_t2s && typeof OpenCC !== 'undefined') _t2s = OpenCC.Converter({ from: 'tw', to: 'cn' });
+    if (_t2s) return await _t2s(text);
+  } catch(e) {}
+  return text;
+}
+
+async function doPreview() {
+  const text = document.getElementById('previewText').value.trim();
+  if (!text) { toast('請輸入試聽文字', 'error'); return; }
+
+  if (_previewCtx) { _previewCtx.close(); _previewCtx = null; }
+
+  const btn = document.getElementById('previewBtn');
+  btn.disabled = true;
+  btn.textContent = '連線中…';
+
+  try {
+    const simplified = await toSimplified(text);
+    const body = { text: simplified, character: 'hayley' };
+    if (currentSet) body.replacement = currentSet;
+    const res = await fetch('/tts_stream', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(await res.text());
+
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    _previewCtx = ctx;
+    const SAMPLE_RATE = 16000;
+    const reader = res.body.getReader();
+    let headerSkipped = false;
+    let leftover = new Uint8Array(0);
+    let nextStart = ctx.currentTime + 0.08;
+
+    btn.disabled = false;
+    btn.textContent = '■ 停止';
+    btn.onclick = stopPreview;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done || ctx.state === 'closed') break;
+
+      // 跳過 44-byte WAV header
+      let raw = headerSkipped ? value : value.slice(44);
+      if (!headerSkipped) headerSkipped = true;
+
+      // 拼上上一個 chunk 剩餘的奇數 byte
+      let pcm;
+      if (leftover.length > 0) {
+        pcm = new Uint8Array(leftover.length + raw.length);
+        pcm.set(leftover);
+        pcm.set(raw, leftover.length);
+      } else {
+        pcm = raw;
+      }
+
+      // 若總長度為奇數，保留最後一個 byte 到下一輪
+      if (pcm.length % 2 !== 0) {
+        leftover = pcm.slice(pcm.length - 1);
+        pcm = pcm.slice(0, pcm.length - 1);
+      } else {
+        leftover = new Uint8Array(0);
+      }
+
+      if (pcm.length < 2) continue;
+
+      const n = pcm.length / 2;
+      const i16 = new Int16Array(pcm.buffer, pcm.byteOffset, n);
+      const f32 = new Float32Array(n);
+      for (let i = 0; i < n; i++) f32[i] = i16[i] / 32768;
+
+      const buf = ctx.createBuffer(1, n, SAMPLE_RATE);
+      buf.getChannelData(0).set(f32);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      const t = Math.max(nextStart, ctx.currentTime + 0.02);
+      src.start(t);
+      nextStart = t + n / SAMPLE_RATE;
+    }
+
+    setTimeout(() => {
+      if (_previewCtx === ctx) { ctx.close(); _previewCtx = null; resetPreviewBtn(); }
+    }, Math.max((nextStart - ctx.currentTime) * 1000 + 300, 300));
+
+  } catch(e) {
+    toast('試聽失敗：' + e.message, 'error');
+    resetPreviewBtn();
+  }
+}
+
+function stopPreview() {
+  if (_previewCtx) { _previewCtx.close(); _previewCtx = null; }
+  resetPreviewBtn();
+}
+
+function resetPreviewBtn() {
+  const btn = document.getElementById('previewBtn');
+  btn.disabled = false; btn.textContent = '▶ 試聽'; btn.onclick = doPreview;
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+let tt;
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = `show ${type}`;
+  clearTimeout(tt); tt = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+document.getElementById('ruleModal').addEventListener('click', function(e)   { if (e.target===this) closeModal(); });
+document.getElementById('bulkSection').addEventListener('click', function(e)  { if (e.target===this) hideBulkImport(); });
+document.getElementById('cloneSection').addEventListener('click', function(e) { if (e.target===this) hideClone(); });
+document.getElementById('cloneTarget').addEventListener('keydown', e => { if (e.key==='Enter') doClone('overwrite'); });
+document.getElementById('setNameInput').addEventListener('keydown', e => { if (e.key==='Enter') loadRules(); });
+
+loadSetList();
+const _orig = loadRules;
+loadRules = async function() { await _orig(); loadSetList(); };
+</script>
+</body>
+</html>

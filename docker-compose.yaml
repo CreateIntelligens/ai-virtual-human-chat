@@ -61,9 +61,29 @@ services:
       retries: 5
       start_period: 120s
 
+  indextts-postgres:
+    image: postgres:16-alpine
+    container_name: indextts-postgres
+    environment:
+      POSTGRES_DB: indextts
+      POSTGRES_USER: indextts
+      POSTGRES_PASSWORD: indextts
+    ports:
+      - "5422:5432"
+    volumes:
+      - indextts_postgres_data:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U indextts -d indextts"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   indextts-service:
     build: ./indextts-service
     container_name: indextts-service
+    env_file:
+      - ./indextts-service/.env.example
     ports:
       - "8001:8001"
     volumes:
@@ -71,6 +91,9 @@ services:
       - ./indextts-service/assets:/app/assets
       - ./indextts-service/checkpoints:/app/checkpoints
       - ./indextts-service/logs:/app/logs
+      - ./indextts-service/replacement_web.html:/app/replacement_web.html
+      - ./indextts-service/vendor_web.html:/app/vendor_web.html
+      - ./indextts-service/test.html:/app/test.html
     environment:
       - MODEL=IndexTeam/IndexTTS-1.5
       - VLLM_USE_MODELSCOPE=1
@@ -79,6 +102,14 @@ services:
       - MODEL_DIR=checkpoints
       - PORT=8001
       - GPU_MEMORY_UTILIZATION=0.1
+      - DB_HOST=indextts-postgres
+      - DB_PORT=5432
+      - DB_NAME=indextts
+      - DB_USER=indextts
+      - DB_PASSWORD=indextts
+    depends_on:
+      indextts-postgres:
+        condition: service_healthy
     deploy:
       resources:
         reservations:
@@ -97,32 +128,35 @@ services:
   # ==================== SenseVoice 服務已禁用 ====================
   # 改用瀏覽器原生的 Web Speech API，不需要額外的 STT 服務
   # 可節省顯存並簡化部署
-  #
-  # sensevoice-service:
-  #   build: ./sensevoice-service
-  #   container_name: sensevoice-service
-  #   ports:
-  #     - "50002:50002"
-  #   volumes:
-  #     - ./sensevoice-service:/app
-  #     - ./sensevoice-service/models:/app/models  # 模型持久化存儲
-  #   environment:
-  #     - SENSEVOICE_DEVICE=cuda:0
-  #     - PYTHONPATH=/app
-  #     - PYTHONUNBUFFERED=1
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #           - driver: nvidia
-  #             count: 1
-  #             capabilities: [gpu]
-  #   restart: always
-  #   working_dir: /app
-  #   command: uvicorn api:app --host 0.0.0.0 --port 50002
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:50002/"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 5
-  #     start_period: 180s  # SenseVoice 模型載入需要較長時間
+  
+  sensevoice-service:
+    build: ./sensevoice-service
+    container_name: sensevoice-service
+    ports:
+      - "50002:50002"
+    volumes:
+      - ./sensevoice-service:/app
+      - ./sensevoice-service/models:/app/models  # 模型持久化存儲
+    environment:
+      - SENSEVOICE_DEVICE=cuda:0
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: always
+    working_dir: /app
+    command: uvicorn api:app --host 0.0.0.0 --port 50002
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:50002/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s  # SenseVoice 模型載入需要較長時間
+
+volumes:
+  indextts_postgres_data:

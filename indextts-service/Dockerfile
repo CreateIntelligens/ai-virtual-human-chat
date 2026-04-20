@@ -1,5 +1,5 @@
-# Use the latest vLLM image with CUDA support
-FROM vllm/vllm-openai:latest
+# Use vLLM 0.9.0 — pinned to avoid breaking API changes in newer versions
+FROM vllm/vllm-openai:v0.9.0
 
 # Set environment variables for RTX 5070 Ti compatibility
 ENV PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
@@ -35,6 +35,9 @@ COPY convert_hf_format.py /app/convert_hf_format.py
 COPY convert_hf_format.sh /app/convert_hf_format.sh
 COPY entrypoint.sh /app/entrypoint.sh
 COPY custom_dict.json /app/custom_dict.json
+COPY replacement_web.html /app/replacement_web.html
+COPY vendor_web.html /app/vendor_web.html
+COPY test.html /app/test.html
 
 RUN sed -i 's/\r$//' /app/entrypoint.sh /app/convert_hf_format.sh && \
     chmod +x /app/entrypoint.sh /app/convert_hf_format.sh
